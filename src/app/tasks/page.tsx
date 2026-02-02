@@ -46,12 +46,10 @@ export default function TasksPage() {
       if (error) {
         console.error('[Tasks Query Error]', error);
       }
-      console.log('[Tasks Raw Data]', data?.map(t => ({ id: t.id, title: t.title, description: t.description })));
       
       return (data || []).map(mapTaskData);
     },
-    staleTime: 0, // Force fresh fetch for debugging
-    refetchOnMount: 'always',
+    staleTime: 1000 * 60 * 5,
   });
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
