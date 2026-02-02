@@ -10,14 +10,19 @@ import { CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase";
-import { sortTasksByUrgency, filterAdminTasks } from "@/lib/engine";
+import { sortTasksByUrgency, filterAdminTasks, mapTaskData } from "@/lib/engine";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { AnimatePresence } from "framer-motion";
+import { Task } from "@/lib/engine";
 
 export default function Home() {
   const { mode, timeAvailable } = useUserStore();
   const { completeTask } = useTaskFulfillment();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // 1. Fetch Active Tasks Query
   const { data: allActive = [], isLoading: isTasksLoading } = useQuery({
@@ -26,32 +31,15 @@ export default function Home() {
       const { data } = await supabase
         .from('tasks')
         .select(`
-          id, 
-          title, 
-          project_id, 
-          due_date, 
-          est_duration_minutes, 
-          energy_tag,
-          last_touched_at,
-          recurrence_interval_days,
+          id, title, project_id, due_date, est_duration_minutes, energy_tag,
+          last_touched_at, recurrence_interval_days,
           projects(name, tier, decay_threshold_days)
         `)
         .eq('state', 'Active');
       
-      return (data || []).map((t: any) => ({
-        id: t.id,
-        title: t.title,
-        projectId: t.project_id,
-        projectName: t.projects?.name || "Orbit",
-        projectTier: t.projects?.tier || 3,
-        lastTouchedAt: new Date(t.last_touched_at),
-        decayThresholdDays: t.projects?.decay_threshold_days || 15,
-        dueDate: t.due_date ? new Date(t.due_date) : undefined,
-        energyTag: t.energy_tag,
-        durationMinutes: t.est_duration_minutes || 30,
-        recurrenceIntervalDays: t.recurrence_interval_days
-      }));
-    }
+      return (data || []).map(mapTaskData);
+    },
+    staleTime: 1000 * 60 * 5, // Keep fresh for 5 mins
   });
 
   // 2. Fetch Recently Completed Tasks Query
@@ -171,7 +159,7 @@ export default function Home() {
               focusTasks.map((task, i) => {
                 const isFirst = i === 0;
                 return (
-                  <div key={task.id} className="relative">
+                  <div key={task.id} className="relative group/card cursor-pointer" onClick={() => setSelectedTask(task as any)}>
                     <FocusCard
                       title={task.title}
                       project={task.projectName}
@@ -181,7 +169,11 @@ export default function Home() {
                     />
                     {isFirst && (
                       <button 
-                        onClick={() => completeMutation.mutate(task)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (completeMutation.isPending) return;
+                          completeMutation.mutate(task);
+                        }}
                         disabled={completeMutation.isPending}
                         className="absolute right-5 bottom-5 bg-primary hover:bg-primary/90 text-void px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all card-shadow active:scale-95 disabled:opacity-50"
                       >
@@ -254,6 +246,16 @@ export default function Home() {
           </Link>
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedTask && (
+          <TaskDetailModal 
+            task={selectedTask} 
+            isOpen={!!selectedTask} 
+            onClose={() => setSelectedTask(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

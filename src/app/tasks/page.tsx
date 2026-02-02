@@ -5,11 +5,16 @@ import { FocusCard } from "@/components/ui/FocusCard";
 import { Search, Filter, Trash2, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { useTaskFulfillment } from "@/hooks/useTaskFulfillment";
+import { mapTaskData } from "@/lib/engine";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { AnimatePresence } from "framer-motion";
+import { Task } from "@/lib/engine";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function TasksPage() {
   const [filter, setFilter] = useState("");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const supabase = createClient();
   const { completeTask } = useTaskFulfillment();
   const queryClient = useQueryClient();
@@ -20,11 +25,17 @@ export default function TasksPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
-        .select('*, projects(name, tier)')
+        .select(`
+          *, 
+          projects(name, tier),
+          task_notes(content),
+          subtasks(title)
+        `)
         .eq('state', 'Active')
         .order('created_at', { ascending: false });
-      return data || [];
-    }
+      return (data || []).map(mapTaskData);
+    },
+    staleTime: 1000 * 60 * 5,
   });
 
   // 2. Mutations
@@ -90,14 +101,28 @@ export default function TasksPage() {
     }
   });
 
-  const filteredTasks = tasks.filter((t: any) => 
-    t.title.toLowerCase().includes(filter.toLowerCase()) || 
-    t.projects?.name?.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filteredTasks = tasks.filter((t: any) => {
+    const searchStr = filter.toLowerCase();
+    const inTitle = t.title.toLowerCase().includes(searchStr);
+    const inProject = t.projectName?.toLowerCase().includes(searchStr);
+    const inNotes = t.task_notes?.some((n: any) => n.content.toLowerCase().includes(searchStr));
+    const inSubtasks = t.subtasks?.some((s: any) => s.title.toLowerCase().includes(searchStr));
+    
+    return inTitle || inProject || inNotes || inSubtasks;
+  });
 
-  const handleDelete = (id: string) => deleteMutation.mutate(id);
-  const handleComplete = (task: any) => completeMutation.mutate(task);
-  const handleUpdateStatus = (id: string, newState: string) => updateStatusMutation.mutate({ id, newState });
+  const handleDelete = (id: string) => {
+    if (deleteMutation.isPending) return;
+    deleteMutation.mutate(id);
+  };
+  const handleComplete = (task: any) => {
+    if (completeMutation.isPending) return;
+    completeMutation.mutate(task);
+  };
+  const handleUpdateStatus = (id: string, newState: string) => {
+    if (updateStatusMutation.isPending) return;
+    updateStatusMutation.mutate({ id, newState });
+  };
   const handleSetRecurrence = async (id: string, days: number) => {
     await supabase.from('tasks').update({ recurrence_interval_days: days }).eq('id', id);
     queryClient.invalidateQueries({ queryKey: ['tasks', 'active'] });
@@ -130,23 +155,47 @@ export default function TasksPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTasks.map((task) => (
-            <div key={task.id} className="group relative bg-surface border border-transparent rounded-3xl p-6 transition-all card-shadow hover:border-border/30">
+          {isLoading ? (
+             Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-surface/50 border border-border/10 rounded-3xl p-6 h-64 animate-pulse">
+                  <div className="w-20 h-2 bg-zinc-800 rounded-full mb-4" />
+                  <div className="w-full h-4 bg-zinc-800 rounded-full mb-2" />
+                  <div className="w-3/4 h-4 bg-zinc-800 rounded-full mb-8" />
+                  <div className="flex justify-end gap-2 mt-auto">
+                    <div className="w-10 h-10 bg-zinc-800 rounded-xl" />
+                    <div className="w-10 h-10 bg-zinc-800 rounded-xl" />
+                  </div>
+                </div>
+             ))
+          ) : filteredTasks.map((task: any) => (
+            <div 
+              key={task.id} 
+              onClick={() => setSelectedTask(task)}
+              className="group relative bg-surface border border-transparent rounded-3xl p-6 transition-all card-shadow hover:border-border/30 cursor-pointer"
+            >
               <div className="flex justify-between items-start mb-6">
                 <div className="flex flex-col">
-                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 leading-none">{task.projects?.name || 'Orbit'}</span>
+                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 leading-none">{task.projectName}</span>
                    <h3 className="text-lg font-bold text-zinc-100 group-hover:text-white transition-colors pr-12 leading-snug">{task.title}</h3>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button 
-                    onClick={() => handleComplete(task)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Type casting for mutation which expects raw if it's not mapped yet, 
+                        // but here handleComplete should handle the mapped object or ID
+                        handleComplete(task);
+                    }}
                     className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl transition-all"
                     title="Mark Done"
                   >
                     <CheckCircle2 size={18} />
                   </button>
                   <button 
-                    onClick={() => handleDelete(task.id)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(task.id);
+                    }}
                     className="w-10 h-10 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all"
                     title="Delete"
                   >
@@ -174,7 +223,7 @@ export default function TasksPage() {
                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">Recur:</span>
                    <select 
                      className="bg-transparent text-[10px] font-extrabold text-zinc-500 outline-none appearance-none hover:text-zinc-300 transition-colors cursor-pointer"
-                     value={task.recurrence_interval_days || ""}
+                     value={task.recurrenceIntervalDays || ""}
                      onChange={(e) => handleSetRecurrence(task.id, parseInt(e.target.value))}
                    >
                      <option value="">Static</option>
@@ -201,6 +250,16 @@ export default function TasksPage() {
           </div>
         )}
       </section>
+
+      <AnimatePresence>
+        {selectedTask && (
+          <TaskDetailModal 
+            task={selectedTask} 
+            isOpen={!!selectedTask} 
+            onClose={() => setSelectedTask(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -23,7 +23,7 @@ Output: JSON object with:
   - "Monthly" -> 30
 
 Rules:
-1. If project is not obvious, use "Orbit".
+1. If project is not obvious, use "Inbox".
 2. Default duration to "30m" if unspecified.
 3. Keep the JSON clean.
 `;

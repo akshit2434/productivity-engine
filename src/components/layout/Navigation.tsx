@@ -15,6 +15,7 @@ const NAV_ITEMS = [
 ];
 
 import { useQueryClient } from "@tanstack/react-query";
+import { mapTaskData } from "@/lib/engine";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -26,8 +27,15 @@ export function Navigation() {
       queryClient.prefetchQuery({
         queryKey: ['history'],
         queryFn: async () => {
-          const { data } = await supabase.from('tasks').select('*, projects(name)').eq('state', 'Done').order('updated_at', { ascending: false });
-          return data || [];
+          const { data } = await supabase
+            .from('tasks')
+            .select('id, title, updated_at, project_id, est_duration_minutes, projects(name)')
+            .eq('state', 'Done')
+            .order('updated_at', { ascending: false });
+          return (data || []).map((t: any) => ({
+            ...t,
+            project_name: t.projects?.name || 'Inbox'
+          }));
         }
       });
     } else if (href === "/portfolio") {
@@ -42,12 +50,19 @@ export function Navigation() {
       queryClient.prefetchQuery({
         queryKey: ['tasks', 'active'],
         queryFn: async () => {
-          const { data } = await supabase.from('tasks').select('*, projects(name, tier)').eq('state', 'Active').order('created_at', { ascending: false });
-          return data || [];
+          const { data } = await supabase
+            .from('tasks')
+            .select(`
+              id, title, project_id, due_date, est_duration_minutes, energy_tag,
+              last_touched_at, recurrence_interval_days,
+              projects(name, tier, decay_threshold_days)
+            `)
+            .eq('state', 'Active')
+            .order('created_at', { ascending: false });
+          return (data || []).map(mapTaskData);
         }
       });
     }
-    // Analytics is slightly more complex, but we can pre-fetch it too if needed
   };
 
   return (

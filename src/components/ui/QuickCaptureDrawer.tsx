@@ -86,13 +86,16 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         const optimisticTask = {
           id: Math.random().toString(),
           title: newResult.task,
-          project_id: newResult.projectId,
-          est_duration_minutes: parseInt(newResult.duration) || 30,
-          energy_tag: newResult.energy || 'Shallow',
-          recurrence_interval_days: newResult.recurrence || null,
+          projectId: newResult.projectId,
+          projectName: newResult.project || "Inbox",
+          projectTier: 3,
+          lastTouchedAt: new Date(),
+          decayThresholdDays: 15,
+          durationMinutes: parseInt(newResult.duration) || 30,
+          energyTag: newResult.energy || 'Shallow',
+          recurrenceIntervalDays: newResult.recurrence || null,
           state: 'Active',
           created_at: new Date().toISOString(),
-          projects: { name: newResult.project }
         };
         queryClient.setQueryData(['tasks', 'active'], [optimisticTask, ...previousTasks]);
       }
@@ -143,7 +146,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       console.error(error);
       setParsedResult({
         task: input,
-        project: "Orbit",
+        project: "Inbox",
         duration: "30m",
         energy: 'Shallow',
         recurrence: null
@@ -262,14 +265,10 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                 <Edit2 size={12} /> Edit
               </button>
               <button
-                onClick={() => setParsedResult(null)}
-                disabled={isSaving}
-                className="flex-1 border border-border text-zinc-400 h-10 rounded-lg text-[10px] font-mono uppercase hover:text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <Edit2 size={12} /> Edit
-              </button>
-              <button
-                onClick={handleConfirm}
+                onClick={() => {
+                  if (isSaving) return;
+                  handleConfirm();
+                }}
                 disabled={isSaving}
                 className="flex-1 bg-primary text-void h-10 rounded-lg text-[10px] font-mono uppercase font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
               >

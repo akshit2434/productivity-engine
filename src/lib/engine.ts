@@ -12,6 +12,7 @@ export interface Task {
   energyTag: 'Grind' | 'Creative' | 'Shallow';
   durationMinutes: number;
   recurrenceIntervalDays?: number;
+  state: 'Active' | 'Waiting' | 'Blocked' | 'Completed' | 'Decayed';
 }
 
 export type SessionMode = 'Deep Work' | 'Low Energy' | 'Creative' | 'Admin';
@@ -40,12 +41,13 @@ export function calculateUrgencyScore(task: Task, currentMode: SessionMode): num
   }
 
   // 2. Base Entropy (Time Decay relative to project threshold)
-  const diffInMs = Math.max(0, now.getTime() - task.lastTouchedAt.getTime());
+  const lastTouched = task.lastTouchedAt instanceof Date ? task.lastTouchedAt : new Date(task.lastTouchedAt || now);
+  const diffInMs = Math.max(0, now.getTime() - lastTouched.getTime());
   const daysSinceLastTouch = diffInMs / (1000 * 60 * 60 * 24);
-  const entropyRatio = daysSinceLastTouch / task.decayThresholdDays;
+  const entropyRatio = daysSinceLastTouch / (task.decayThresholdDays || 15);
   
   // 3. Tier Multiplier
-  const tierWeight = TIER_WEIGHTS[task.projectTier];
+  const tierWeight = TIER_WEIGHTS[task.projectTier || 3];
   
   // 4. Contextual Alignment
   let contextMultiplier = 0.5; // Neutral-ish penalty for mismatch
@@ -57,6 +59,23 @@ export function calculateUrgencyScore(task: Task, currentMode: SessionMode): num
   const score = tierWeight * Math.pow(entropyRatio, 1.5) * contextMultiplier;
   
   return parseFloat(score.toFixed(4));
+}
+
+export function mapTaskData(t: any): Task {
+  return {
+    id: t.id,
+    title: t.title,
+    projectId: t.project_id,
+    projectName: t.projects?.name || "Inbox",
+    projectTier: t.projects?.tier || 3,
+    lastTouchedAt: new Date(t.last_touched_at || t.created_at || new Date()),
+    decayThresholdDays: t.projects?.decay_threshold_days || 15,
+    dueDate: t.due_date ? new Date(t.due_date) : undefined,
+    energyTag: t.energy_tag || "Shallow",
+    durationMinutes: t.est_duration_minutes || 30,
+    recurrenceIntervalDays: t.recurrence_interval_days,
+    state: t.state || 'Active'
+  };
 }
 
 export function filterAdminTasks(tasks: Task[]): { focus: Task[], admin: Task[] } {
