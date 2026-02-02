@@ -16,6 +16,11 @@ Output: JSON object with:
   - Creative: High focus, non-linear (Design, Writing, R&D).
   - Grind: High focus, linear (Coding, Spreadsheets, Logistics).
   - Shallow: Low focus, quick (Email, Calls, Admin).
+- recurrence: Number of days for interval (null if single-time).
+  - "Daily" -> 1
+  - "Weekly" -> 7
+  - "Every 3 days" -> 3
+  - "Monthly" -> 30
 
 Rules:
 1. If project is not obvious, use "Orbit".

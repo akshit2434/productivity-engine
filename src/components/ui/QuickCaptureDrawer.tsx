@@ -20,6 +20,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     project: string;
     duration: string;
     energy: string;
+    recurrence?: number | null;
     projectId?: string;
   } | null>(null);
 
@@ -70,6 +71,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         project_id: finalProjectId || null,
         est_duration_minutes: parseInt(result.duration) || 30,
         energy_tag: result.energy || 'Shallow',
+        recurrence_interval_days: result.recurrence || null,
         state: 'Active'
       });
 
@@ -87,6 +89,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
           project_id: newResult.projectId,
           est_duration_minutes: parseInt(newResult.duration) || 30,
           energy_tag: newResult.energy || 'Shallow',
+          recurrence_interval_days: newResult.recurrence || null,
           state: 'Active',
           created_at: new Date().toISOString(),
           projects: { name: newResult.project }
@@ -133,6 +136,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         project: data.project,
         duration: data.duration,
         energy: data.energy || 'Shallow',
+        recurrence: data.recurrence || null,
         projectId: matchingProject?.id
       });
     } catch (error) {
@@ -141,7 +145,8 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         task: input,
         project: "Orbit",
         duration: "30m",
-        energy: 'Shallow'
+        energy: 'Shallow',
+        recurrence: null
       });
     } finally {
       setIsProcessing(false);
@@ -237,10 +242,25 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                   <span className="text-zinc-500 text-xs">Duration</span>
                   <span className="text-zinc-200 text-sm font-mono">{parsedResult.duration}</span>
                 </div>
+                {parsedResult.recurrence && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-500 text-xs">Recurrence</span>
+                    <span className="text-emerald-400 text-sm font-mono font-bold">
+                       Every {parsedResult.recurrence} days
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex gap-3">
+              <button
+                onClick={() => setParsedResult(null)}
+                disabled={isSaving}
+                className="flex-1 border border-border text-zinc-400 h-10 rounded-lg text-[10px] font-mono uppercase hover:text-white transition-colors flex items-center justify-center gap-2"
+              >
+                <Edit2 size={12} /> Edit
+              </button>
               <button
                 onClick={() => setParsedResult(null)}
                 disabled={isSaving}
