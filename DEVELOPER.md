@@ -1,40 +1,35 @@
 # Developer Documentation: Technical Architecture
 
-Welcome to the **Entropy UI** codebase. This project is built for high-speed iteration and data density.
+## 1. Core Architecture
+- **State:** [Zustand](https://github.com/pmndrs/zustand) for client-side context (Current Mode, Timer, UI toggles).
+- **Database:** Supabase (Solo Mode enabled - see `supabase/schema.sql` for current relaxed policies).
+- **AI:** `/api/parse-task` using Gemini 1.5 Pro to turn raw text/audio into structured data.
 
-## 1. Technical Stack
-- **Framework:** [Next.js 15+](https://nextjs.org/) (App Router, Turbopack)
-- **Styling:** Vanilla CSS + Tailwind (Utility only where needed)
-- **Database/Auth:** [Supabase](https://supabase.com/) (PostgreSQL + SSR)
-- **AI Engine:** [Google Gemini AI](https://ai.google.dev/) (Task Parsing/Context Inference)
-- **State Management:** [Zustand](https://github.com/pmndrs/zustand) (Client-side preferences)
+## 2. Key Modules & Logic
 
-## 2. Core Modules
+### Urgency Engine (`src/lib/engine.ts`)
+The `calculateUrgencyScore` function drives the Dashboard. It uses a **Decay Heartbeat** logic:
+- `health_percent = (days_since_touch / project.decay_threshold) * 100`
+- High decay leads to higher scores, pushing tasks from that project to the top.
 
-### `src/lib/engine.ts` (The Urgency Engine)
-This is the heart of the app. It handles the probabilistic sorting logic.
-- `calculateUrgencyScore()`: Implements the non-linear decay formula.
-- `sortTasksByUrgency()`: Takes user context (Mode/Time) and filters the backlog.
+### Multi-KPI Implementation (Planned)
+We are moving from a single `kpi_name`/`kpi_value` in `projects` to a related `project_kpis` table or a JSONB field for flexible, multiple metrics.
 
-### `src/components/ui/QuickCaptureDrawer.tsx`
-Handles the AI interface.
-- Sends raw text to `/api/parse-task`.
-- Gemini returns structured JSON (Task, Project, Duration, Energy).
-- Handles project matching and fallback to "Inbox" if no project is found.
+### AI Hub (Planned)
+The AI Chat hub will involve:
+- **Audio Capture**: Using the Web Media API.
+- **Transcription/Parsing**: Sending raw audio or text to Gemini for classification and extraction.
+- **History**: Storing past dumps in an `input_history` table for reference.
 
-### `src/lib/supabase.ts`
-Client configuration. **Note:** Currently running in "Solo Mode" (RLS disabled, user_id optional) for personal/local use.
+## 3. Aesthetic Guidelines
+- **CSS Variable Driven**: All colors are tied to CSS variables in `globals.css`.
+- **Framer Motion**: Used for page-level transitions.
+- **Desktop Grid**: We use CSS Grid for layout to ensure responsiveness from 375px to 2560px.
 
-## 3. Database Schema (`supabase/schema.sql`)
-- **`projects`**: The "Boats" with tiers and decay thresholds.
-- **`tasks`**: Individual units of work with states (Active, Waiting, Blocked, Done).
-- **`activity_logs`**: Immutable record of completed work for the Analytics engine.
-
-## 4. Key Developer Workflows
-- **Running Locally:** `pnpm dev`
-- **Modifying Schema:** Edit `supabase/schema.sql` and apply in Supabase SQL editor.
-- **AI Prompts:** Managed in `src/app/api/parse-task/route.ts`.
-
-## 5. Environment Variables
-Requires `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `GEMINI_API_KEY`.
-Refer to `.env.example`.
+## 4. Database Setup
+Ensure you run the latest migrations from `supabase/schema.sql`.
+Current requirements for recurrence and health:
+```sql
+ALTER TABLE tasks ADD COLUMN recurrence_interval_days integer;
+ALTER TABLE tasks ADD COLUMN last_touched_at timestamp with time zone DEFAULT now();
+```

@@ -106,70 +106,47 @@ This document identifies all missing or partially implemented features based on 
 
 ---
 
-### 9. Voice Capture (Audio Recording)
-**Status:** ❌ Not Implemented  
-**Requirement (plan.md, Quick Capture):**
-- Text Field + **Audio Recording Button**.
-- Transcribe audio → Parse with AI.
+# Productivity Engine: Refined Execution Plan
 
-**Implementation:**
-- Add Web Speech API or `@xenova/transformers` for local Whisper.
-- Send transcript to `/api/parse-task`.
+## 🔴 NEW CORE PRIORITIES (Phase 2: Power User Features)
 
----
+These are the immediate next steps to make the app truly "Essential".
 
-### 10. Offline-First / PWA
-**Status:** ❌ Not Implemented
-**Requirement (plan.md, Section 6):**
-- Capture and edits must work offline and sync when connection is restored.
+### 1. Advanced Task Visibility
+- [ ] **Completed Tasks View**: Ability to toggle/view completed tasks inside project details and main manager.
+- [ ] **Project Task Filters**: Tabs for [Upcoming], [All], [Completed] within the Project Detail page.
 
-**Implementation:**
-- Add `manifest.json` and service worker.
-- Use `localForage` or IndexedDB for local task cache.
-- Sync to Supabase on reconnect.
+### 2. Multi-KPI Tracking
+- [ ] **Schema Update**: Migration to support multiple KPIs per project (name-value pairs).
+- [ ] **Portfolio UX**: Dedicated modal or inline form to quickly add and manage multiple KPIs.
+
+### 3. AI & Natural Language Expansion
+- [ ] **NL Recurrence**: "Remind me every 15 days" parsing in Quick Capture.
+- [ ] **Custom Intervals**: Support for any integer day interval for recurrence.
+- [ ] **Interaction Hub**: A dedicated [Chat & AI] view for audio dumps, context chatting, and voice interaction.
 
 ---
 
-## 🔴 NECESSITIES (Core Functionality)
+## 🟡 PHASE 3: THE AESTHETIC & RESPONSIVE OVERHAUL
 
-These are required for the app to function as a complete productivity engine.
+This phase moves away from the "Pilot Cockpit" neon style toward a premium, professional "Flow State" UI.
 
-| #   | Feature                 | Status        | Why It's Core                                |
-| --- | ----------------------- | ------------- | -------------------------------------------- |
-| 1   | Project Detail Page     | ✅ Implemented | Can't manage projects without it             |
-| 2   | KPI Tracking UI         | ✅ Implemented | North Star metrics are central to the system |
-| 3   | Live Analytics          | ✅ Implemented | Weekly review is useless without real data   |
-| 4   | Waiting/Blocked States  | ✅ Implemented | Task lifecycle is incomplete                 |
-| 5   | Smart Recurrence        | ✅ Implemented | Core "decay-based" philosophy                |
-| 6   | Swipe Gestures          | ❌ Missing     | Primary interaction method in plan.md        |
-| 7   | Time Available Selector | ❌ Missing     | Context-aware filtering is core              |
+### 1. Aesthetic Pivot
+- [ ] **De-Neonification**: Remove harsh glow/neon effects.
+- [ ] **Professional Copy**: Replace "System Status", "Bot_ID", and "In Storage" with professional, functional terminology.
+- [ ] **Color Palette**: Use a more sophisticated, balanced palette (Deep slates, smooth grays, accent primary).
 
----
-
-## 🟢 ENHANCEMENTS (Polish & Advanced)
-
-Nice-to-have features that improve UX but aren't blocking core functionality.
-
-| #   | Feature                  | Status    | Why It's Polish                |
-| --- | ------------------------ | --------- | ------------------------------ |
-| 8   | Fatigue Mode / Zeigarnik | ❌ Missing | Visual flair, not functional   |
-| 9   | Voice Capture            | ❌ Missing | Text input works fine for now  |
-| 10  | PWA / Offline Support    | ❌ Missing | Works online, offline is bonus |
+### 2. Responsive Architecture
+- [ ] **Desktop Layout**: Move away from fixed-mobile-width. Use a sidebar-content or multi-panel layout for desktop space.
+- [ ] **Transitions**: Implement smooth Framer Motion page transitions and micro-animations.
 
 ---
 
-## Recommended Implementation Order
-
-### Phase 1: Core Completion
-1.  Project Detail Page + KPI UI
-2.  Live Analytics (real data)
-3.  Waiting/Blocked States + Recurrence
-
-### Phase 2: UX Polish
-4.  Swipe Gestures
-5.  Time Available Selector
-
-### Phase 3: Enhancements
-6.  Fatigue Mode / Zeigarnik Effects
-7.  Voice Capture
-8.  PWA / Offline
+## ✅ COMPLETED (Phase 1: Foundation)
+- [x] Basic Urgency Engine & Scoring.
+- [x] Basic Quick Capture (AI Parsing).
+- [x] Portfolio View (Health & KPI).
+- [x] Project Detail Pages (Edit Mode).
+- [x] Real-time Analytics (Velocity & Stagnation).
+- [x] Smart Recurrence (Manual set).
+- [x] Solo Mode (No Auth required).
