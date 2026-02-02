@@ -28,6 +28,8 @@ create table tasks (
   est_duration_minutes integer default 30,
   energy_tag text check (energy_tag in ('Grind', 'Creative', 'Shallow')) default 'Shallow',
   blocked_by_id uuid references tasks(id),
+  recurrence_interval_days integer,
+  last_touched_at timestamp with time zone default now(),
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );

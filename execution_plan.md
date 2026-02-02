@@ -119,7 +119,7 @@ This document identifies all missing or partially implemented features based on 
 ---
 
 ### 10. Offline-First / PWA
-**Status:** ❌ Not Implemented  
+**Status:** ❌ Not Implemented
 **Requirement (plan.md, Section 6):**
 - Capture and edits must work offline and sync when connection is restored.
 
@@ -134,15 +134,15 @@ This document identifies all missing or partially implemented features based on 
 
 These are required for the app to function as a complete productivity engine.
 
-| #   | Feature                 | Status      | Why It's Core                                |
-| --- | ----------------------- | ----------- | -------------------------------------------- |
-| 1   | Project Detail Page     | ❌ Missing   | Can't manage projects without it             |
-| 2   | KPI Tracking UI         | ⚠️ Partial   | North Star metrics are central to the system |
-| 3   | Live Analytics          | 🔴 Fake Data | Weekly review is useless without real data   |
-| 4   | Waiting/Blocked States  | ⚠️ Partial   | Task lifecycle is incomplete                 |
-| 5   | Smart Recurrence        | ❌ Missing   | Core "decay-based" philosophy                |
-| 6   | Swipe Gestures          | ❌ Missing   | Primary interaction method in plan.md        |
-| 7   | Time Available Selector | ❌ Missing   | Context-aware filtering is core              |
+| #   | Feature                 | Status        | Why It's Core                                |
+| --- | ----------------------- | ------------- | -------------------------------------------- |
+| 1   | Project Detail Page     | ✅ Implemented | Can't manage projects without it             |
+| 2   | KPI Tracking UI         | ✅ Implemented | North Star metrics are central to the system |
+| 3   | Live Analytics          | ✅ Implemented | Weekly review is useless without real data   |
+| 4   | Waiting/Blocked States  | ✅ Implemented | Task lifecycle is incomplete                 |
+| 5   | Smart Recurrence        | ✅ Implemented | Core "decay-based" philosophy                |
+| 6   | Swipe Gestures          | ❌ Missing     | Primary interaction method in plan.md        |
+| 7   | Time Available Selector | ❌ Missing     | Context-aware filtering is core              |
 
 ---
 
