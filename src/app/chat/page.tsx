@@ -36,6 +36,7 @@ function ChatInterface() {
   }, [isMobile]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewChatLoading, setIsNewChatLoading] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -75,6 +76,7 @@ function ChatInterface() {
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
+
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -177,10 +179,30 @@ function ChatInterface() {
   // Handle pending prompt for new sessions
   useEffect(() => {
     if (sessionId && sessionId !== 'undefined' && sessionId !== 'null' && status === 'ready') {
+      // Handle pending text prompt
       const pendingPrompt = localStorage.getItem('pending_prompt');
       if (pendingPrompt) {
         localStorage.removeItem('pending_prompt');
         sendMessage({ text: pendingPrompt });
+        return;
+      }
+
+      // Handle pending audio URL (from voice recording before session existed)
+      const pendingAudioUrl = localStorage.getItem('pending_audio_url');
+      const pendingAudioType = localStorage.getItem('pending_audio_type');
+      if (pendingAudioUrl && pendingAudioType) {
+        localStorage.removeItem('pending_audio_url');
+        localStorage.removeItem('pending_audio_type');
+        sendMessage({ 
+          files: [
+            {
+              type: 'file',
+              mediaType: pendingAudioType,
+              url: pendingAudioUrl,
+              filename: `recording-${Date.now()}.webm`
+            }
+          ]
+        } as any);
       }
     }
   }, [sessionId, status, sendMessage]);
@@ -262,13 +284,9 @@ function ChatInterface() {
   const { isRecording, startRecording, stopRecording, analyser, audioBlob } = useVoiceRecorder();
 
   const handleVoiceSubmit = async (blob: Blob) => {
-    if (!sessionId || sessionId === 'undefined' || sessionId === 'null') {
-      alert("Please start a session first or type a message to initialize.");
-      return;
-    }
-
+    setIsProcessingAudio(true);
     try {
-      // 1. Upload audio to Supabase Storage via our new endpoint
+      // 1. Upload audio to Supabase Storage FIRST (so we don't lose the blob)
       const formData = new FormData();
       formData.append('file', blob, `recording-${Date.now()}.webm`);
 
@@ -283,18 +301,34 @@ function ChatInterface() {
       }
 
       const { url: storageUrl } = await uploadResponse.json();
-      // Audio uploaded successfully
-
-      // 2. Send the storage URL to the AI SDK
-      // The mediaType is still important for the AI SDK/model to know it's audio
       const mediaType = blob.type.split(';')[0];
 
+      // 2. If no session exists, create one and redirect with pending audio URL
+      if (!sessionId || sessionId === 'undefined' || sessionId === 'null') {
+        const res = await fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: 'Voice Message' }),
+        });
+        const data = await res.json();
+        if (data.id) {
+          // Store the already-uploaded audio URL for processing after remount
+          localStorage.setItem('pending_audio_url', storageUrl);
+          localStorage.setItem('pending_audio_type', mediaType);
+          router.push(`/chat?id=${data.id}`);
+          return;
+        } else {
+          throw new Error('Failed to create session');
+        }
+      }
+
+      // 3. Send the storage URL to the AI SDK
       await sendMessage({ 
         files: [
           {
             type: 'file',
             mediaType: mediaType,
-            url: storageUrl, // Passing the public storage URL instead of base64
+            url: storageUrl,
             filename: `recording-${Date.now()}.webm`
           }
         ]
@@ -302,6 +336,8 @@ function ChatInterface() {
     } catch (error) {
       console.error("Failed to process voice message:", error);
       alert(error instanceof Error ? error.message : "Failed to upload and send voice message.");
+    } finally {
+      setIsProcessingAudio(false);
     }
   };
 
@@ -498,6 +534,11 @@ function ChatInterface() {
                 <VoiceVisualizer analyser={analyser} className="w-full" color="#6366f1" />
                 <p className="text-[10px] font-mono text-primary uppercase tracking-[0.2em] animate-pulse">The Prophet is listening...</p>
               </div>
+            ) : isProcessingAudio ? (
+              <div className="flex-1 flex items-center justify-center gap-3 py-4">
+                <Loader2 size={20} className="animate-spin text-primary" />
+                <p className="text-sm font-bold text-primary uppercase tracking-widest">Processing Audio...</p>
+              </div>
             ) : (
               <textarea 
                 ref={textareaRef}
@@ -545,10 +586,18 @@ function ChatInterface() {
   );
 }
 
+function ChatPageContent() {
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get('id');
+  
+  // Key forces remount when sessionId changes, ensuring useChat gets the correct sessionId
+  return <ChatInterface key={sessionId || 'new-session'} />;
+}
+
 export default function ChatPage() {
   return (
     <Suspense fallback={<div className="flex h-screen bg-void items-center justify-center text-[10px] font-bold text-zinc-700 uppercase tracking-[0.3em] animate-pulse">Syncing Matrix...</div>}>
-      <ChatInterface />
+      <ChatPageContent />
     </Suspense>
   );
 }

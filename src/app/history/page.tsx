@@ -102,6 +102,7 @@ export default function HistoryPage() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['history'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
     }
   });
 

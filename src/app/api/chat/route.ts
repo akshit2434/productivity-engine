@@ -483,6 +483,8 @@ export async function POST(req: Request) {
           }),
           execute: async ({ id }) => {
             console.log(`[Prophet API] >> EXECUTE delete_task:`, id);
+            // First delete associated activity logs to prevent orphaned analytics
+            await supabase.from('activity_logs').delete().eq('task_id', id);
             const { error } = await supabase.from('tasks').delete().eq('id', id);
             if (error) throw error;
             return { success: true };

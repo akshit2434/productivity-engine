@@ -140,6 +140,8 @@ export default function ProjectDetailPage() {
     },
     onSettled: () => {
         queryClient.invalidateQueries({ queryKey: ['tasks', 'project', id] });
+        queryClient.invalidateQueries({ queryKey: ['analytics'] });
+        queryClient.invalidateQueries({ queryKey: ['projectAnalytics', id] });
     }
   });
 

@@ -15,9 +15,11 @@ interface Project {
 }
 
 import { useQuery } from "@tanstack/react-query";
+import { CreateProjectDialog } from "@/components/portfolio/CreateProjectDialog";
 
 export default function PortfolioPage() {
   const supabase = createClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ['projects'],
@@ -39,9 +41,19 @@ export default function PortfolioPage() {
 
   return (
     <div className="px-6 pt-12 pb-32 max-w-md md:max-w-6xl mx-auto">
-      <header className="mb-10 text-center md:text-left">
-        <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-1">Strategy</p>
-        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-2">Portfolio</h1>
+      <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="text-center md:text-left">
+          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-1">Strategy</p>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-2">Portfolio</h1>
+        </div>
+        
+        <button 
+          onClick={() => setIsDialogOpen(true)}
+          className="bg-primary text-void px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+        >
+          <Plus size={16} strokeWidth={3} />
+          <span>Scale New Entity</span>
+        </button>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -99,6 +111,11 @@ export default function PortfolioPage() {
           </div>
         )}
       </div>
+
+      <CreateProjectDialog 
+        isOpen={isDialogOpen} 
+        onClose={() => setIsDialogOpen(false)} 
+      />
     </div>
   );
 }
