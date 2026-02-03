@@ -7,8 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { 
-  Sparkles, Send, Bot, User, Loader2, X, Plus, Search, 
-  MessageSquare, Trash2, History, ChevronLeft, Menu, Home, BarChart3
+  Sparkles, Send, Bot, User, Loader2, Plus, Search, 
+  MessageSquare, Trash2, ChevronLeft, Menu, Home, BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ function ChatInterface() {
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<{ id: string, title: string, updated_at: string }[]>([]);
   
   // Close sidebar by default on mobile
   useEffect(() => {
@@ -34,6 +34,20 @@ function ChatInterface() {
   const [isNewChatLoading, setIsNewChatLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'inherit';
+      const scrollHeight = textarea.scrollHeight;
+      textarea.style.height = `${Math.min(scrollHeight, 200)}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input]);
 
   const { messages, setMessages, status, sendMessage } = useChat({
     transport: new DefaultChatTransport({
@@ -46,7 +60,7 @@ function ChatInterface() {
         role: 'assistant',
         content: 'I am the Prophet. State your objective or inquire about your momentum.',
         parts: [{ type: 'text', text: 'I am the Prophet. State your objective or inquire about your momentum.' }],
-      } as any,
+      } as UIMessage,
     ],
     onFinish: (message) => {
       console.log('[Chat Client] onFinish:', message);
@@ -93,11 +107,12 @@ function ChatInterface() {
           const res = await fetch(`/api/chat/messages/${sessionId}`);
           const data = await res.json();
           if (Array.isArray(data)) {
-           const formattedMessages: UIMessage[] = data.map((m: any) => ({
+            const formattedMessages: UIMessage[] = data.map((m: { id: string, role: string, content: string, parts?: unknown[] }) => ({
               id: m.id,
-              role: m.role,
-              content: m.content,
-              parts: m.parts || [{ type: 'text', text: m.content }]
+              role: m.role as 'user' | 'assistant',
+              content: m.content || '',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              parts: (m.parts as any) || [{ type: 'text', text: m.content || '' }]
             }));
             console.log(`[Chat UI] Loaded ${formattedMessages.length} messages for session ${sessionId}`);
             if (formattedMessages.length > 0) {
@@ -118,7 +133,7 @@ function ChatInterface() {
           role: 'assistant',
           content: 'I am the Prophet. State your objective or inquire about your momentum.',
           parts: [{ type: 'text', text: 'I am the Prophet. State your objective or inquire about your momentum.' }],
-        } as any,
+        } as UIMessage,
       ]);
     }
   }, [sessionId, setMessages]);
@@ -175,7 +190,7 @@ function ChatInterface() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
   };
 
@@ -202,6 +217,9 @@ function ChatInterface() {
 
     const currentInput = input;
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'inherit';
+    }
     await sendMessage({ text: currentInput });
   };
 
@@ -304,8 +322,8 @@ function ChatInterface() {
           </Link>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-12 space-y-8 custom-scrollbar pb-64">
-          {messages.map((m: any) => (
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-12 space-y-8 custom-scrollbar">
+          {messages.map((m: UIMessage) => (
             <div key={m.id} className={cn("flex gap-6 max-w-4xl mx-auto", m.role === 'user' ? "flex-row-reverse" : "flex-row")}>
               <div className={cn("w-10 h-10 rounded-2xl shrink-0 flex items-center justify-center border transition-all", m.role === 'user' ? "bg-zinc-800 border-zinc-700 text-zinc-400" : "bg-primary/10 border-primary/20 text-primary shadow-lg shadow-primary/5")}>
                 {m.role === 'user' ? <User size={18} /> : <Bot size={18} />}
@@ -314,33 +332,47 @@ function ChatInterface() {
                 <div className={cn("rounded-3xl px-6 py-4 text-base leading-relaxed card-shadow", m.role === 'user' ? "bg-primary text-black font-semibold" : "bg-surface border border-border/20 text-zinc-300")}>
                   <div className={cn("max-w-none", m.role === 'user' ? "prose prose-zinc" : "prose prose-invert")}>
                     {m.parts && Array.isArray(m.parts) && m.parts.length > 0 ? (
-                      m.parts.map((part: any, index: number) => {
+                      m.parts.map((part: { type: string, text?: string, state?: string, output?: unknown, result?: unknown }, index: number) => {
                         if (part.type === 'text') {
-                          if (!part.text.trim()) return null;
+                          if (!part.text || !part.text.trim()) return null;
                           return <ReactMarkdown key={index} remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>;
                         }
                         if (part.type.startsWith('tool-')) {
-                          const toolName = part.type.replace('tool-', '').replace('call', '').replace('-', ' ');
+                          const toolCallPart = part as { type: string, toolName?: string, state?: string, output?: unknown, result?: unknown };
+                          const toolName = toolCallPart.toolName || part.type.replace('tool-', '').replace('call', '').replace('-', ' ');
                           
-                          if (part.type.includes('call')) {
+                          if (part.type.includes('call') || toolCallPart.state === 'call') {
                             return (
                               <div key={index} className="flex items-center gap-2 my-2 py-1 px-3 bg-white/5 rounded-lg border border-white/10 text-[10px] uppercase tracking-wider font-bold text-zinc-500">
                                 <Loader2 size={10} className="animate-spin text-primary" />
-                                Executing {toolName}...
+                                Executing {toolName || 'operation'}...
                               </div>
                             );
                           }
                           
-                          if (toolName === 'generate chart') {
-                            if (part.state === 'output-available' || part.state === 'result') {
-                              const result = part.output || part.result;
+                          if (toolName === 'generate chart' || toolName === 'generate_chart') {
+                            if (toolCallPart.state === 'output-available' || toolCallPart.state === 'result' || part.type === 'tool-result') {
+                              const result = (toolCallPart.output || toolCallPart.result) as {
+                                chartType: 'bar' | 'line' | 'pie' | 'area';
+                                title: string;
+                                data: unknown[];
+                                xAxisKey?: string;
+                                dataKeys: string[];
+                              };
                               return (
                                 <div key={index} className="my-6">
                                   <div className="flex items-center gap-2 mb-2 text-[10px] uppercase tracking-[0.2em] font-bold text-primary/60">
                                     <BarChart3 size={12} />
                                     Visualization Rendered
                                   </div>
-                                  <AIChart chartType={result.chartType} title={result.title} data={result.data} xAxisKey={result.xAxisKey} dataKeys={result.dataKeys} />
+                                  <AIChart 
+                                    chartType={(result as { chartType: 'bar' | 'line' | 'pie' | 'area' }).chartType} 
+                                    title={(result as { title: string }).title} 
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    data={(result as { data: unknown[] }).data as any[]} 
+                                    xAxisKey={(result as { xAxisKey?: string }).xAxisKey} 
+                                    dataKeys={(result as { dataKeys: string[] }).dataKeys} 
+                                  />
                                 </div>
                               );
                             }
@@ -349,7 +381,7 @@ function ChatInterface() {
                         return null;
                       })
                     ) : (
-                      m.content.trim() ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown> : <div className="text-zinc-500 italic text-sm">Processing...</div>
+                      (m as { content?: string }).content?.trim() ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{(m as { content?: string }).content}</ReactMarkdown> : <div className="text-zinc-500 italic text-sm">Processing...</div>
                     )}
                   </div>
                 </div>
@@ -364,10 +396,27 @@ function ChatInterface() {
           )}
         </div>
 
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl px-6 pb-8">
-          <div className="glass-morphic border border-border/10 rounded-[2.5rem] p-3 shadow-2xl flex gap-3 focus-within:border-primary/30 transition-all">
-            <input type="text" placeholder="State your objective..." value={input} onChange={handleInputChange} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit(e)} className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-white placeholder:text-zinc-600 font-medium" />
-            <button onClick={handleSubmit} disabled={isLoading || !input.trim()} className="w-14 h-14 bg-primary text-void rounded-[2rem] flex items-center justify-center hover:bg-primary/90 transition-all disabled:opacity-50 group hover:scale-105 active:scale-95">
+        <div className="w-full max-w-4xl mx-auto px-6 pb-10 pt-2">
+          <div className="glass-morphic border border-border/10 rounded-[2.5rem] p-3 shadow-2xl flex gap-3 focus-within:border-primary/30 transition-all items-end">
+            <textarea 
+              ref={textareaRef}
+              rows={1}
+              placeholder="State your objective..." 
+              value={input} 
+              onChange={handleInputChange} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }} 
+              className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-white placeholder:text-zinc-600 font-medium resize-none overflow-y-auto custom-scrollbar max-h-[200px] leading-relaxed" 
+            />
+            <button 
+              onClick={handleSubmit} 
+              disabled={isLoading || !input.trim()} 
+              className="w-14 h-14 bg-primary text-void rounded-[2rem] flex items-center justify-center hover:bg-primary/90 transition-all disabled:opacity-50 group hover:scale-105 active:scale-95 mb-1 shrink-0"
+            >
               <Send size={24} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
           </div>

@@ -143,6 +143,26 @@ export default function ProjectDetailPage() {
     }
   });
 
+  const deleteProjectMutation = useMutation<void, Error, string>({
+    mutationFn: async (projectId) => {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      router.push('/portfolio');
+    }
+  });
+
+  const handleDeleteProject = () => {
+    if (confirm("Are you sure you want to vanish this project? All associated tasks will be lost forever.")) {
+      deleteProjectMutation.mutate(id as string);
+    }
+  };
+
   const handleUpdateProject = async () => {
     const { error } = await supabase
       .from('projects')
@@ -242,6 +262,17 @@ export default function ProjectDetailPage() {
               >
                 Save Protocol Changes
               </button>
+
+              <div className="pt-4 border-t border-border/20">
+                <button 
+                  onClick={handleDeleteProject}
+                  disabled={deleteProjectMutation.isPending}
+                  className="w-full bg-rose-500/10 text-rose-500 border border-rose-500/20 font-bold py-4 rounded-2xl text-[11px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all card-shadow flex items-center justify-center gap-2 group"
+                >
+                  <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
+                  Vanish Project
+                </button>
+              </div>
             </section>
           )}
 
