@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, List, FolderOpen, BarChart3, LogOut } from "lucide-react";
+import { Home, List, FolderOpen, BarChart3, LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { label: "History", href: "/history", icon: List },
   { label: "Projects", href: "/portfolio", icon: FolderOpen },
   { label: "Analytics", href: "/review", icon: BarChart3 },
+  { label: "Prophet", href: "/chat", icon: Sparkles },
 ];
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +20,8 @@ import { mapTaskData } from "@/lib/engine";
 
 export function Navigation() {
   const pathname = usePathname();
+  if (pathname === '/chat') return null;
+  
   const queryClient = useQueryClient();
   const supabase = createClient();
 

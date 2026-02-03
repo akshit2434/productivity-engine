@@ -48,3 +48,20 @@ export interface Subtask {
   is_completed: boolean;
   created_at: string;
 }
+
+export interface Chat {
+  id: string;
+  user_id?: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Message {
+  id: string;
+  chat_id: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  tool_calls?: any;
+  created_at: string;
+}

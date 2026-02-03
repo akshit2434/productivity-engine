@@ -6,7 +6,7 @@ import { ModeSelector } from "@/components/layout/ModeSelector";
 import { TimeAvailableSelector } from "@/components/layout/TimeAvailableSelector";
 import { useUserStore } from "@/store/userStore";
 import { useTaskFulfillment } from "@/hooks/useTaskFulfillment";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, Clock, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase";
@@ -134,6 +134,13 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex gap-3">
+             <Link 
+               href="/chat"
+               className="h-10 px-4 md:h-14 md:px-6 rounded-2xl md:rounded-3xl bg-primary/10 border border-primary/20 flex items-center gap-2 text-primary card-shadow hover:bg-primary/20 transition-all font-bold text-xs md:text-sm tracking-wide"
+             >
+               <Sparkles size={16} />
+               <span className="hidden sm:inline">CONSULT PROPHET</span>
+             </Link>
              <div className="w-10 h-10 md:w-14 md:h-14 rounded-full md:rounded-3xl bg-surface border border-border flex items-center justify-center text-zinc-400 card-shadow">
                <Clock className="md:w-6 md:h-6" size={18} />
              </div>
@@ -257,6 +264,7 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
+
     </div>
   );
 }
