@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceVisualizer } from "@/components/ui/VoiceVisualizer";
+import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import AIChart from '@/components/chat/AIChart';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -110,13 +111,34 @@ function ChatInterface() {
           const res = await fetch(`/api/chat/messages/${sessionId}`);
           const data = await res.json();
           if (Array.isArray(data)) {
-            const formattedMessages: UIMessage[] = data.map((m: { id: string, role: string, content: string, parts?: unknown[] }) => ({
-              id: m.id,
-              role: m.role as 'user' | 'assistant',
-              content: m.content || '',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              parts: (m.parts as any) || [{ type: 'text', text: m.content || '' }]
-            }));
+            const formattedMessages: UIMessage[] = data.map((m: { id: string, role: string, content: string, parts?: unknown }) => {
+              // Parse parts if it's a JSON string (from Supabase)
+              let parsedParts: unknown[] = [];
+              if (m.parts) {
+                if (typeof m.parts === 'string') {
+                  try {
+                    parsedParts = JSON.parse(m.parts);
+                  } catch {
+                    parsedParts = [{ type: 'text', text: m.content || '' }];
+                  }
+                } else if (Array.isArray(m.parts)) {
+                  parsedParts = m.parts;
+                }
+              }
+              
+              // If no valid parts, create a text part from content
+              if (!parsedParts || parsedParts.length === 0) {
+                parsedParts = [{ type: 'text', text: m.content || '' }];
+              }
+              
+              return {
+                id: m.id,
+                role: m.role as 'user' | 'assistant',
+                content: m.content || '',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                parts: parsedParts as any
+              };
+            });
             // Messages loaded for session
             if (formattedMessages.length > 0) {
               setMessages(formattedMessages);
@@ -395,16 +417,7 @@ function ChatInterface() {
                         // Audio playback for file parts
                         if (part.type === 'file' && part.mediaType?.startsWith('audio/') && part.url) {
                           return (
-                            <div key={index} className="flex items-center gap-3 my-2 p-3 bg-primary/5 border border-primary/20 rounded-2xl">
-                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                <Mic size={14} className="text-primary" />
-                              </div>
-                              <audio 
-                                controls 
-                                src={part.url} 
-                                className="w-full max-w-[200px] h-8 [&::-webkit-media-controls-panel]:bg-transparent"
-                              />
-                            </div>
+                            <AudioPlayer key={index} src={part.url} />
                           );
                         }
                         if (part.type.startsWith('tool-')) {
