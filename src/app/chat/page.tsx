@@ -8,10 +8,13 @@ import Link from 'next/link';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { 
   Sparkles, Send, Bot, User, Loader2, Plus, Search, 
-  MessageSquare, Trash2, ChevronLeft, Menu, Home, BarChart3
+  MessageSquare, Trash2, ChevronLeft, Menu, Home, BarChart3,
+  Mic, Square
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { VoiceVisualizer } from "@/components/ui/VoiceVisualizer";
 import AIChart from '@/components/chat/AIChart';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -223,6 +226,58 @@ function ChatInterface() {
     await sendMessage({ text: currentInput });
   };
 
+  const { isRecording, startRecording, stopRecording, analyser, audioBlob } = useVoiceRecorder();
+
+  const handleVoiceSubmit = async (blob: Blob) => {
+    if (!sessionId || sessionId === 'undefined' || sessionId === 'null') {
+      alert("Please start a session first or type a message to initialize.");
+      return;
+    }
+
+    try {
+      // 1. Upload audio to Supabase Storage via our new endpoint
+      const formData = new FormData();
+      formData.append('file', blob, `recording-${Date.now()}.webm`);
+
+      const uploadResponse = await fetch('/api/upload-audio', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Failed to upload audio');
+      }
+
+      const { url: storageUrl } = await uploadResponse.json();
+      console.log(`[Prophet Chat] Audio uploaded to:`, storageUrl);
+
+      // 2. Send the storage URL to the AI SDK
+      // The mediaType is still important for the AI SDK/model to know it's audio
+      const mediaType = blob.type.split(';')[0];
+
+      await sendMessage({ 
+        files: [
+          {
+            type: 'file',
+            mediaType: mediaType,
+            url: storageUrl, // Passing the public storage URL instead of base64
+            filename: `recording-${Date.now()}.webm`
+          }
+        ]
+      } as any);
+    } catch (error) {
+      console.error("Failed to process voice message:", error);
+      alert(error instanceof Error ? error.message : "Failed to upload and send voice message.");
+    }
+  };
+
+  useEffect(() => {
+    if (!isRecording && audioBlob) {
+      handleVoiceSubmit(audioBlob);
+    }
+  }, [isRecording, audioBlob]);
+
   return (
     <div className="flex h-screen bg-void overflow-hidden">
       <AnimatePresence mode="wait">
@@ -332,14 +387,30 @@ function ChatInterface() {
                 <div className={cn("rounded-3xl px-6 py-4 text-base leading-relaxed card-shadow", m.role === 'user' ? "bg-primary text-black font-semibold" : "bg-surface border border-border/20 text-zinc-300")}>
                   <div className={cn("max-w-none", m.role === 'user' ? "prose prose-zinc" : "prose prose-invert")}>
                     {m.parts && Array.isArray(m.parts) && m.parts.length > 0 ? (
-                      m.parts.map((part: { type: string, text?: string, state?: string, output?: unknown, result?: unknown }, index: number) => {
+                      m.parts.map((part: { type: string, text?: string, state?: string, output?: unknown, result?: unknown, mediaType?: string, url?: string }, index: number) => {
                         if (part.type === 'text') {
                           if (!part.text || !part.text.trim()) return null;
                           return <ReactMarkdown key={index} remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>;
                         }
+                        // Audio playback for file parts
+                        if (part.type === 'file' && part.mediaType?.startsWith('audio/') && part.url) {
+                          return (
+                            <div key={index} className="flex items-center gap-3 my-2 p-3 bg-primary/5 border border-primary/20 rounded-2xl">
+                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <Mic size={14} className="text-primary" />
+                              </div>
+                              <audio 
+                                controls 
+                                src={part.url} 
+                                className="w-full max-w-[200px] h-8 [&::-webkit-media-controls-panel]:bg-transparent"
+                              />
+                            </div>
+                          );
+                        }
                         if (part.type.startsWith('tool-')) {
                           const toolCallPart = part as { type: string, toolName?: string, state?: string, output?: unknown, result?: unknown };
                           const toolName = toolCallPart.toolName || part.type.replace('tool-', '').replace('call', '').replace('-', ' ');
+
                           
                           if (part.type.includes('call') || toolCallPart.state === 'call') {
                             return (
@@ -397,28 +468,52 @@ function ChatInterface() {
         </div>
 
         <div className="w-full max-w-4xl mx-auto px-6 pb-10 pt-2">
-          <div className="glass-morphic border border-border/10 rounded-[2.5rem] p-3 shadow-2xl flex gap-3 focus-within:border-primary/30 transition-all items-end">
-            <textarea 
-              ref={textareaRef}
-              rows={1}
-              placeholder="State your objective..." 
-              value={input} 
-              onChange={handleInputChange} 
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }} 
-              className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-white placeholder:text-zinc-600 font-medium resize-none overflow-y-auto custom-scrollbar max-h-[200px] leading-relaxed" 
-            />
-            <button 
-              onClick={handleSubmit} 
-              disabled={isLoading || !input.trim()} 
-              className="w-14 h-14 bg-primary text-void rounded-[2rem] flex items-center justify-center hover:bg-primary/90 transition-all disabled:opacity-50 group hover:scale-105 active:scale-95 mb-1 shrink-0"
-            >
-              <Send size={24} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </button>
+          <div className="glass-morphic border border-border/10 rounded-[2.5rem] p-3 shadow-2xl flex gap-3 focus-within:border-primary/30 transition-all items-end relative overflow-hidden">
+            {isRecording ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-2 gap-2">
+                <VoiceVisualizer analyser={analyser} className="w-full" color="#6366f1" />
+                <p className="text-[10px] font-mono text-primary uppercase tracking-[0.2em] animate-pulse">The Prophet is listening...</p>
+              </div>
+            ) : (
+              <textarea 
+                ref={textareaRef}
+                rows={1}
+                placeholder="State your objective..." 
+                value={input} 
+                onChange={handleInputChange} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }} 
+                className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-white placeholder:text-zinc-600 font-medium resize-none overflow-y-auto custom-scrollbar max-h-[200px] leading-relaxed" 
+              />
+            )}
+            
+            <div className="flex gap-2 mb-1 mr-1">
+              <button 
+                onClick={isRecording ? stopRecording : startRecording}
+                className={cn(
+                  "w-14 h-14 rounded-[2rem] flex items-center justify-center transition-all group",
+                  isRecording 
+                    ? "bg-red-500/10 border border-red-500/20 text-red-500" 
+                    : "bg-void border border-border/10 text-primary hover:bg-white/5"
+                )}
+              >
+                {isRecording ? <Square size={20} /> : <Mic size={24} />}
+              </button>
+              
+              {!isRecording && (
+                <button 
+                  onClick={handleSubmit} 
+                  disabled={isLoading || !input.trim()} 
+                  className="w-14 h-14 bg-primary text-void rounded-[2rem] flex items-center justify-center hover:bg-primary/90 transition-all disabled:opacity-50 group hover:scale-105 active:scale-95 shrink-0"
+                >
+                  <Send size={24} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

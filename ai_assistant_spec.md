@@ -8,7 +8,7 @@ The goal is to elevate the "Productivity Engine" from a static tool to an active
 
 ---
 
-## 2. Feature 1: Quick Capture Voice Mode (Pending)
+## 2. Feature 1: Quick Capture Voice Mode [COMPLETED]
 **Design Philosophy:** "Record, Confirm, Done." Minimal friction.
 
 ### UI/UX
@@ -56,16 +56,10 @@ The goal is to elevate the "Productivity Engine" from a static tool to an active
 
 ---
 
-## 5. Next Steps: Phase 2 (The "Active Partner")
+## 5. Next Steps: Phase 3 (Cognitive Resonance)
 
-### 1. Voice Mastery
-- **Implementation**: Waveform visualization on capture.
-- **Context**: In-chat audio recording support.
+### 1. Proactive Health Checks
+- Prophet should proactively message the user if a Boat is decaying.
 
-### 2. Syllabus Algorithm Integration
-- **Implementation**: Sync `get_syllabus` tool with the scoring logic in `engine.ts`.
-- **Logic**: AI should be able to tell the user *exactly* what to do based on the math of entropy.
-
-### 3. Health Orchestration
-- **Implementation**: `complete_task` tool that triggers project rejuvenation (updating `last_touched_at`).
-- **Context**: Ensuring AI actions have functional side-effects equivalent to UI actions.
+### 2. Multi-Task Batching
+- AI should suggest batching "Shallow" tasks into 30m sprints.

@@ -30,17 +30,29 @@ Rules:
 
 export async function POST(req: Request) {
   try {
-    const { input } = await req.json();
+    const { input, audio, mimeType } = await req.json();
 
-    if (!input) {
-      return NextResponse.json({ error: "Missing input" }, { status: 400 });
+    if (!input && !audio) {
+      return NextResponse.json({ error: "Missing input or audio" }, { status: 400 });
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const result = await model.generateContent([
-      { text: SYSTEM_PROMPT },
-      { text: `User Input: "${input}"` },
-    ]);
+    
+    const promptParts: any[] = [{ text: SYSTEM_PROMPT }];
+    
+    if (audio && mimeType) {
+      promptParts.push({
+        inlineData: {
+          data: audio,
+          mimeType: mimeType
+        }
+      });
+      promptParts.push({ text: "Please parse the task from this audio recording." });
+    } else {
+      promptParts.push({ text: `User Input: "${input}"` });
+    }
+
+    const result = await model.generateContent(promptParts);
 
     const responseText = result.response.text();
     // Extract JSON from response (handling potential markdown formatting)

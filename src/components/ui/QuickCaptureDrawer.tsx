@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Send, Sparkles, Check, Edit2 } from "lucide-react";
+import { X, Send, Sparkles, Check, Edit2, Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { VoiceVisualizer } from "./VoiceVisualizer";
 
 interface QuickCaptureDrawerProps {
   isOpen: boolean;
@@ -118,14 +120,37 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     }
   });
 
-  const handleProcess = async () => {
-    if (!input) return;
+  const { isRecording, startRecording, stopRecording, analyser, audioBlob } = useVoiceRecorder();
+
+  const handleProcess = async (blobOverride?: Blob) => {
+    const targetBlob = blobOverride || audioBlob;
+    if (!input && !targetBlob) return;
     setIsProcessing(true);
     
     try {
+      let body: any = { input };
+
+      if (targetBlob) {
+        // Convert blob to base64
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]); // Remove data:audio/...;base64,
+          };
+        });
+        reader.readAsDataURL(targetBlob);
+        const base64Audio = await base64Promise;
+        
+        body = {
+          audio: base64Audio,
+          mimeType: targetBlob.type
+        };
+      }
+
       const response = await fetch("/api/parse-task", {
         method: "POST",
-        body: JSON.stringify({ input }),
+        body: JSON.stringify(body),
         headers: { "Content-Type": "application/json" },
       });
       
@@ -145,7 +170,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     } catch (error) {
       console.error(error);
       setParsedResult({
-        task: input,
+        task: input || "Voice Task",
         project: "Inbox",
         duration: "30m",
         energy: 'Shallow',
@@ -155,6 +180,13 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       setIsProcessing(false);
     }
   };
+
+  // Automatically process when recording stops and we have a blob
+  React.useEffect(() => {
+    if (!isRecording && audioBlob) {
+      handleProcess(audioBlob);
+    }
+  }, [isRecording, audioBlob]);
 
   const handleConfirm = () => addTaskMutation.mutate(parsedResult);
   const isSaving = addTaskMutation.isPending;
@@ -180,26 +212,56 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
 
         {!parsedResult ? (
           <div className="space-y-4">
-            <textarea
-              autoFocus
-              className="w-full h-32 bg-void border border-border rounded-lg p-4 font-mono text-sm focus:ring-1 focus:ring-primary outline-none resize-none placeholder:text-zinc-700"
-              placeholder="What's in your orbit?"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-            />
-            <button
-              onClick={handleProcess}
-              disabled={!input || isProcessing}
-              className="w-full bg-primary text-void h-12 rounded-lg font-mono uppercase text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
-            >
-              {isProcessing ? (
-                <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
-              ) : (
-                <>Parse with Brain <Send size={14} /></>
+            {isRecording ? (
+              <div className="w-full h-32 bg-void/50 border border-primary/20 rounded-xl flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+                <div className="absolute inset-0 bg-primary/5 animate-pulse" />
+                <VoiceVisualizer analyser={analyser} className="z-10 w-full" color="#6366f1" />
+                <p className="text-[10px] font-mono text-primary uppercase tracking-[0.2em] z-10">Listening...</p>
+              </div>
+            ) : (
+              <textarea
+                autoFocus
+                className="w-full h-32 bg-void border border-border rounded-lg p-4 font-mono text-sm focus:ring-1 focus:ring-primary outline-none resize-none placeholder:text-zinc-700"
+                placeholder="What's in your orbit?"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+              />
+            )}
+            
+            <div className="flex gap-2">
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={cn(
+                  "flex-1 h-12 rounded-lg font-mono uppercase text-xs font-bold flex items-center justify-center gap-2 transition-all",
+                  isRecording 
+                    ? "bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20" 
+                    : "bg-surface border border-border text-primary hover:bg-white/5"
+                )}
+              >
+                {isRecording ? (
+                  <>Stop Recording <Square size={14} /></>
+                ) : (
+                  <>Voice Mode <Mic size={14} /></>
+                )}
+              </button>
+              
+              {!isRecording && (
+                <button
+                  onClick={() => handleProcess()}
+                  disabled={!input || isProcessing}
+                  className="flex-[2] bg-primary text-void h-12 rounded-lg font-mono uppercase text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
+                >
+                  {isProcessing ? (
+                    <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
+                  ) : (
+                    <>Parse Brain <Send size={14} /></>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           </div>
-        ) : (
+        )
+ : (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-void p-4 border border-primary/20 rounded-lg">
               <span className="text-[10px] font-mono text-primary uppercase block mb-2">Inferred Intent</span>

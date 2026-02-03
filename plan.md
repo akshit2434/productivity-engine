@@ -1,7 +1,7 @@
 # Project Title: Dynamic Context Engine (Productivity App)
 
 ## 1. Project Overview
-**Status:** Dashboard, Portfolio, and AI Assistant (v1) implemented.
+**Status:** Dashboard, Portfolio, and AI Assistant (v2 - Phase 2) implemented.
 **Objective:** Build a high-performance, mobile-first productivity application designed for a power user managing multiple complex projects ("boats") simultaneously.
 
 ---
@@ -29,28 +29,15 @@ Projects track `last_touched_at`. If the gap exceeds `decay_threshold_days`, the
 
 ---
 
-## 4. Pending Roadmap: Phase 2 (Active Partner)
+## 4. Pending Roadmap: Phase 3 (Cognitive Resonance)
 
-### **1. Voice Mastery**
-*Objective: Implement a premium, low-friction voice experience.*
-- [ ] **Real-time Waveforms**: Build a `VoiceVisualizer` component (Web Audio API + Canvas) for the Quick Capture drawer and a new Mic toggle in the Prophet Chat.
-- [ ] **In-Chat Audio Ingestion**: Update `route.ts` to accept `audio` parts directly, allowing the Prophet to "listen" and react to voice notes.
-- [ ] **Auto-Transcription Pipeline**: Ensure voice-to-note updates in the Task Detail modal use the "Clean Transcription" logic.
+### **1. Proactive Maintenance**
+- [ ] **Decay Notifications**: Implement background jobs (or simple triggers) for the Prophet to alert the user about critical "Boat" decay.
+- [ ] **Dynamic KPI Suggestions**: AI should suggest new KPIs based on task completion patterns.
 
-### **2. Syllabus Algorithm Integration**
-*Objective: Sync the AI's intuition with the codebase's internal math.*
-- [ ] **`get_syllabus` Tool**: Implement a function-calling tool that imports `calculateUrgencyScore` from `src/lib/engine.ts`.
-- [ ] **Conversational Filtering**: The Prophet should fetch the full mathematical syllabus and then filter it based on user intent (e.g., "I only have 15 mins").
-- [ ] **Context Injection**: Pass user intent (e.g., "I have 15 mins") to the tool for precise filtering.
-
-### **3. Health Orchestration**
-*Objective: Automate "Boat" rejuvenation via AI actions.*
-- [ ] **`complete_task` Tool**: This tool must:
-  1. Set task to `Done`.
-  2. Update the associated project's `last_touched_at` to `now()`.
-  3. Log to `activity_logs`.
-- [ ] **KPI Auto-Updates**: Ingest task completion data into project-level KPIs on task finish.
-- [ ] **Decay Alerts**: Prophet should proactively warn the user if a high-Tier "Boat" is nearing its decay threshold.
+### **2. Execution Sprints**
+- [ ] **"Admin Hour" Mode**: Prophet suggests batching all <10m tasks into a single focused sprint.
+- [ ] **Pomodoro Integration**: Sync chat status with a timer for Deep Work sessions.
 
 ---
 
