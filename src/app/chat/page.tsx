@@ -126,6 +126,16 @@ function ChatInterface() {
                 }
               }
               
+              // CRITICAL: Sanitize parts to only include displayable types (text, file)
+              // Filter out tool-call and tool-result parts - they cause schema errors when sent back to API
+              if (parsedParts && Array.isArray(parsedParts)) {
+                parsedParts = parsedParts.filter((p: any) => {
+                  const type = p?.type || '';
+                  // Only keep text and file parts - exclude tool-call, tool-result, etc.
+                  return type === 'text' || type === 'file';
+                });
+              }
+              
               // If no valid parts, create a text part from content
               if (!parsedParts || parsedParts.length === 0) {
                 parsedParts = [{ type: 'text', text: m.content || '' }];
@@ -139,6 +149,7 @@ function ChatInterface() {
                 parts: parsedParts as any
               };
             });
+
             // Messages loaded for session
             if (formattedMessages.length > 0) {
               setMessages(formattedMessages);

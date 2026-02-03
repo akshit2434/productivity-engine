@@ -70,7 +70,7 @@ export function Navigation() {
 
   return (
     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-sm w-[90%] glass rounded-3xl p-1.5 card-shadow">
-      <div className="flex items-center justify-around px-2">
+      <div className="flex items-center justify-between">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -81,12 +81,12 @@ export function Navigation() {
               href={item.href}
               onMouseEnter={() => handlePrefetch(item.href)}
               className={cn(
-                "flex flex-col items-center gap-1.5 px-4 py-2 rounded-2xl transition-all duration-300",
+                "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-2xl transition-all duration-300 min-w-0",
                 isActive ? "text-primary bg-primary/10" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
               )}
             >
-              <Icon size={18} />
-              <span className="text-[9px] font-bold uppercase tracking-wider">
+              <Icon size={18} className="shrink-0" />
+              <span className="text-[8px] font-bold uppercase tracking-wider truncate w-full text-center px-1">
                 {item.label}
               </span>
             </Link>
