@@ -1,6 +1,6 @@
 # Entropy UI | Dynamic Context Engine
 
-**Project Status:** Active Beta  
+**Project Status:** Active Beta (God Mode Enabled)
 **Core Concept:** Probabilistic Scheduling & Dynamic Context
 
 > *"In an era of infinite distraction, the greatest luxury is focus."*
@@ -38,21 +38,22 @@ The home screen is a **Syllabus**—a curated list of what to execute *next*, ca
 - **Framework:** Next.js 15+ (App Router)
 - **State/Caching:** TanStack Query (React Query) v5
 - **Database:** Supabase (PostgreSQL + Realtime)
-- **Styling:** Tailwind CSS + Framer Motion
+- **Styling:** Vanilla CSS (Tailwind excluded for flexibility) + Framer Motion
 - **AI:** Google Gemini 2.0 Flash (Multimodal)
 
 ### Key Modules
 - **`src/lib/engine.ts`**: The urgency scoring algorithm.
-- **`src/hooks/useTaskFulfillment.ts`**: Centralized logic for task completion, log creation, and project health rejuvenation.
-- **`src/store/userStore.ts`**: Client-side session state (Zustand).
+- **`src/app/api/chat/route.ts`**: The Prophet's "God Mode" interface.
+- **`src/hooks/useTaskFulfillment.ts`**: Centralized logic for task completion and project health.
 
 ---
 
 ## 3. AI & Voice Integration
-The future of productivity is a conversation.
-- **Quick Capture:** "Record, Confirm, Done." Voice dumps are parsed into structured JSON (Project + Duration + Recurrence) by Gemini.
-- **The Prophet:** A planned, fully-featured AI Assistant that acts as a General Manager for your database.
-  - *See [ai_assistant_spec.md](./ai_assistant_spec.md) for full details.*
+The productivity engine is managed by an active **Intelligence Partner**.
+
+- **The Prophet**: A high-capability AI Assistant with "God Mode" access to the engine's database. It can create tasks, manage "Boats," and analyze performance trends.
+- **Quick Capture**: "Record, Confirm, Done." Voice dumps are parsed into structured JSON by the Prophet.
+- **Enrichment**: AI-powered transcription for task notes and automated subtask generation.
 
 ---
 
@@ -70,7 +71,12 @@ pnpm install
 
 # Setup Environment
 cp .env.example .env.local
-# Add: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, GEMINI_API_KEY
+# Add: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, GEMINI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
+
+# Developer Handover
+For the current Phase 2 roadmap and technical architecture details, please refer to:
+- [plan.md](./plan.md) (PRD & Future Logic)
+- [ai_assistant_spec.md](./ai_assistant_spec.md) (The Prophet & Voice Design)
 
 # Run Development Server
 pnpm dev

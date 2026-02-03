@@ -8,97 +8,64 @@ The goal is to elevate the "Productivity Engine" from a static tool to an active
 
 ---
 
-## 2. Feature 1: Quick Capture Voice Mode
+## 2. Feature 1: Quick Capture Voice Mode (Pending)
 **Design Philosophy:** "Record, Confirm, Done." Minimal friction.
 
 ### UI/UX
 *   **Trigger:** A prominent "Microphone" icon in the Quick Capture drawer.
 *   **Recording State:**
-    *   Replaces the text area with a **Sleek Waveform Visualization** (using Canvas/Web Audio API).
-    *   Animation scales with audio amplitude (giving a "living" feel).
+    *   Replaces the text area with a **Sleek Waveform Visualization**.
+    *   Animation scales with audio amplitude.
     *   Stop button (Red Square) or "Tap to Finish".
 *   **Processing:**
-    *   Audio is transcribed (using OpenAI Whisper or Gemini Multimodal).
+    *   Audio is transcribed using Gemini 2.0 Flash (Multimodal).
     *   Transcribed text is fed into the existing `parse-task` logic.
     *   Standard confirmation UI appears with the inferred Project, Duration, and Recurrence.
 
-### Technical Stack
-*   **Audio Capture:** Native Browser `MediaRecorder` API.
-*   **Visualization:** Custom Canvas implementation or lightweight library (e.g., `react-audio-visualize`).
-*   **Transcription:** Server Action calling Gemini 2.0 Flash (Multimodal) or Whisper.
-
 ---
 
-## 3. Feature 2: Task Enrichment (Notes & Subtasks)
+## 3. Feature 2: Task Enrichment (Notes & Subtasks) [COMPLETED]
 **Design Philosophy:** Tasks are containers for "Knowledge." The user should be able to dump messy info into a task, and the AI keeps it organized.
 
 ### Core Capabilities
 *   **Rich Notes:**
-    *   Users can add multiple text notes to a task.
-    *   **Voice Notes:** Users can record a voice note directly attached to a task.
-    *   **AI Transcription:** Audio is sent to Gemini for "Clean Transcription" (removing filler words, fixing grammar, ensuring English output unless specified).
+    *   Multiple text notes per task.
+    *   **Voice Notes:** Directly attached to a task.
+    *   **AI Transcription:** Audio sent to Gemini for "Clean Transcription."
 *   **Subtasks/Checklists:**
-    *   Simple toggle-able items nested within a parent task.
-    *   Not full tasks (no decay/entropy), just a completion list.
+    *   Toggle-able checklist items nested within a parent task.
 *   **AI Integration:**
-    *   The Prophet can read all notes/subtasks to understand context.
-    *   The Prophet can edit search/summarize these notes.
+    *   The Prophet can read all notes/subtasks via `get_task_details`.
 
 ---
 
-## 4. Feature 3: "The Prophet" (Full AI Assistant)
-**Design Philosophy:** A semi-autonomous agent that understands the user's "Entropy" and "Orbit." It has "God Mode" access to the app's data.
+## 4. Feature 3: "The Prophet" [COMPLETED - VERSION 1.0]
+**Design Philosophy:** A semi-autonomous agent that understands "Entropy." It has "God Mode" access to the app's data.
 
 ### System Prompt & Personality (The "God Prompt")
-Every request is injected with a powerful system prompt:
-*   **Identity:** "You are the Prophet, the supreme intelligence of this Productivity Engine."
-*   **Context:** Knows the definition of "Boats" (Projects) and "Decay" (Entropy).
-*   **General Intelligence:** Explicitly instructed to handle general queries (e.g., research, coding help) using its own knowledge, falling back to app tools only when necessary.
-*   **Voice/Tone:** Optimistic, Stoic, Concise.
+*   **Identity:** "The Prophet," a non-chalant, stoic intelligence.
+*   **Core Concepts:** Understands "Boats" (Projects) and "Decay" (Entropy).
+*   **Persistence:** Conversation history, tool calls, and results are persisted in `chat_messages`.
 
-### Tool Registry ("God Mode" Access)
-The AI has comprehensive access via **Function Calling**:
-*   **Task Management:**
-    *   `createTask`, `updateTask` (status, dates, decay), `deleteTask`.
-    *   `listTasks` (powerful filtering by project, tag, urgency).
-*   **Task Enrichment:**
-    *   `addNote(taskId, content)`: Append info.
-    *   `getTaskDetails(taskId)`: Retrieve notes and subtasks.
-    *   `addSubtask(taskId, content)`, `toggleSubtask`.
-*   **Project Management:**
-    *   `getProjects`, `createProject`, `updateProject`.
-*   **Data/Analytics:**
-    *   `getAnalytics`, `searchNotes` (Semantic search in future).
-
-### UI Structure
-*   **Chat Interface:**
-    *   Glassmorphic, premium message bubbles.
-    *   Optimistic "Thinking..." states for tool calls.
-*   **History Management:**
-    *   Sidebar with recent chats (stored in `chats` table).
-    *   Optimistic creation, renaming (AI generated titles), and deletion.
+### Tool Registry (Current Capabilities)
+*   **`create_task` / `update_task` / `delete_task`**: Full task lifecycle management.
+*   **`create_project` / `delete_project`**: Manage project containers (Boats).
+*   **`list_tasks` / `get_projects`**: Real-time data retrieval.
+*   **`get_analytics` / `generate_chart`**: Visualizing productivity trends and entropy.
+*   **`add_note` / `add_subtask` / `toggle_subtask`**: Deepening task context.
 
 ---
 
-## 5. Implementation Phase Plan
+## 5. Next Steps: Phase 2 (The "Active Partner")
 
-### Phase 1: data Model & Enrichment (Notes/Subtasks)
-1.  **Schema Updates:**
-    *   Create `task_notes` table (id, task_id, content, type).
-    *   Create `subtasks` table (id, task_id, title, is_completed).
-2.  **Task Detail View:**
-    *   Build UI to view/add notes and subtasks.
-    *   Implement `AudioRecorder` for notes with "Clean Transcription" API.
+### 1. Voice Mastery
+- **Implementation**: Waveform visualization on capture.
+- **Context**: In-chat audio recording support.
 
-### Phase 2: Quick Capture Voice (MVP)
-1.  Implement Global Quick Capture with Audio.
-2.  Integrate Gemini Multimodal for "Audio -> JSON Task" parsing.
+### 2. Syllabus Algorithm Integration
+- **Implementation**: Sync `get_syllabus` tool with the scoring logic in `engine.ts`.
+- **Logic**: AI should be able to tell the user *exactly* what to do based on the math of entropy.
 
-### Phase 3: The Prophet (Backend & Logic)
-1.  Create `chats` and `messages` tables.
-2.  Implement `src/app/api/chat/route.ts` with Vercel AI SDK.
-3.  Define all Zod schemas for the Tool Registry.
-
-### Phase 4: The Prophet (Frontend UI)
-1.  Build the Chat Interface and History Sidebar.
-2.  Connect to `/api/chat` with optimistic updates.
+### 3. Health Orchestration
+- **Implementation**: `complete_task` tool that triggers project rejuvenation (updating `last_touched_at`).
+- **Context**: Ensuring AI actions have functional side-effects equivalent to UI actions.
