@@ -458,7 +458,7 @@ export default function ProjectDetailPage() {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: projectColor, opacity: 0.4 }} />
                 <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
                   {tasks.filter(t => activeTab === "History" ? t.state === 'Done' : t.state === activeTab).length} Entities
