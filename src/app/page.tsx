@@ -31,7 +31,8 @@ export default function Home() {
         .select(`
           id, title, description, project_id, due_date, est_duration_minutes, energy_tag,
           last_touched_at, recurrence_interval_days,
-          projects(name, tier, decay_threshold_days)
+          projects(name, tier, decay_threshold_days),
+          subtasks(is_completed)
         `)
         .eq('state', 'Active');
       return (data || []).map(mapTaskData);
@@ -101,6 +102,25 @@ export default function Home() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      await supabase.from('tasks').delete().eq('id', taskId);
+    },
+    onMutate: async (taskId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'active'] });
+      const previous = queryClient.getQueryData<any[]>(['tasks', 'active']);
+      queryClient.setQueryData(['tasks', 'active'], (old: any) => old?.filter((t: any) => t.id !== taskId));
+      return { previous };
+    },
+    onError: (err, id, context) => {
+      queryClient.setQueryData(['tasks', 'active'], context?.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'active'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+    }
+  });
+
   // Realtime Sync - Only for critical external triggers if needed. 
   // Removing broad Task sync to prevent edit-flicker for solo user.
   useEffect(() => {
@@ -163,31 +183,27 @@ export default function Home() {
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {focusTasks.length > 0 ? (
-              focusTasks.map((task, i) => {
-                const isFirst = i === 0;
+              focusTasks.map((task) => {
                 return (
-                  <div key={task.id} className="relative group/card cursor-pointer" onClick={() => setSelectedTaskId(task.id)}>
-                    <FocusCard
-                      title={task.title}
-                      project={task.projectName}
-                      tier={task.projectTier as any}
-                      duration={task.durationMinutes < 60 ? `${task.durationMinutes}m` : `${Math.floor(task.durationMinutes / 60)}h`}
-                      isActive={isFirst}
-                    />
-                    {isFirst && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (completeMutation.isPending) return;
-                          completeMutation.mutate(task);
-                        }}
-                        disabled={completeMutation.isPending}
-                        className="absolute right-5 bottom-5 bg-primary hover:bg-primary/90 text-void px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all card-shadow active:scale-95 disabled:opacity-50"
-                      >
-                        {completeMutation.isPending ? "..." : "Done"}
-                      </button>
-                    )}
-                  </div>
+                  <FocusCard
+                    key={task.id}
+                    title={task.title}
+                    project={task.projectName}
+                    tier={task.projectTier as any}
+                    duration={task.durationMinutes < 60 ? `${task.durationMinutes}m` : `${Math.floor(task.durationMinutes / 60)}h`}
+                    isActive={true}
+                    onComplete={() => {
+                      if (completeMutation.isPending) return;
+                      completeMutation.mutate(task);
+                    }}
+                    onDelete={() => {
+                      if (deleteMutation.isPending) return;
+                      deleteMutation.mutate(task.id);
+                    }}
+                    onClick={() => setSelectedTaskId(task.id)}
+                    subtasksCount={task.subtasksCount}
+                    completedSubtasksCount={task.completedSubtasksCount}
+                  />
                 );
               })
             ) : !isLoading && (

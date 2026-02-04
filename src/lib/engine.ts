@@ -12,8 +12,10 @@ export interface Task {
   energyTag: 'Grind' | 'Creative' | 'Shallow';
   durationMinutes: number;
   recurrenceIntervalDays?: number;
-  state: 'Active' | 'Waiting' | 'Blocked' | 'Completed' | 'Decayed';
+  state: 'Active' | 'Waiting' | 'Blocked' | 'Completed' | 'Decayed' | 'Done';
   description?: string;
+  subtasksCount?: number;
+  completedSubtasksCount?: number;
 }
 
 export type SessionMode = 'Deep Work' | 'Low Energy' | 'Creative' | 'Admin';
@@ -76,7 +78,9 @@ export function mapTaskData(t: any): Task {
     durationMinutes: t.est_duration_minutes || 30,
     recurrenceIntervalDays: t.recurrence_interval_days,
     state: t.state || 'Active',
-    description: t.description || ""
+    description: t.description || "",
+    subtasksCount: t.subtasks?.length || 0,
+    completedSubtasksCount: t.subtasks?.filter((st: any) => st.is_completed).length || 0
   };
 }
 

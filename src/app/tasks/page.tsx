@@ -38,7 +38,8 @@ export default function TasksPage() {
           recurrence_interval_days,
           last_touched_at,
           created_at,
-          projects(name, tier, decay_threshold_days)
+          projects(name, tier, decay_threshold_days),
+          subtasks(is_completed)
         `)
         .eq('state', 'Active')
         .order('created_at', { ascending: false });
@@ -201,79 +202,19 @@ export default function TasksPage() {
                 </div>
              ))
           ) : filteredTasks.map((task: any) => (
-            <div 
-              key={task.id} 
+            <FocusCard 
+              key={task.id}
+              title={task.title}
+              project={task.projectName}
+              tier={task.projectTier as any}
+              duration={`${task.durationMinutes}m`}
+              isActive={task.state === 'Active'}
+              onComplete={() => handleComplete(task)}
+              onDelete={() => handleDelete(task.id)}
               onClick={() => setSelectedTaskId(task.id)}
-              className="group relative bg-surface border border-transparent rounded-3xl p-6 transition-all card-shadow hover:border-border/30 cursor-pointer"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex flex-col">
-                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 leading-none">{task.projectName}</span>
-                   <h3 className="text-lg font-bold text-zinc-100 group-hover:text-white transition-colors pr-12 leading-snug">{task.title}</h3>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        // Type casting for mutation which expects raw if it's not mapped yet, 
-                        // but here handleComplete should handle the mapped object or ID
-                        handleComplete(task);
-                    }}
-                    className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl transition-all"
-                    title="Mark Done"
-                  >
-                    <CheckCircle2 size={18} />
-                  </button>
-                  <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(task.id);
-                    }}
-                    className="w-10 h-10 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all"
-                    title="Delete"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-4 border-t border-border/10">
-                 {/* State Toggle */}
-                 <div className="relative group/select">
-                   <select 
-                     className="bg-void border border-border/50 rounded-xl px-4 py-2 text-[10px] font-bold uppercase text-zinc-400 outline-none focus:border-primary/40 appearance-none hover:text-zinc-200 transition-colors cursor-pointer"
-                     value={task.state}
-                     onChange={(e) => handleUpdateStatus(task.id, e.target.value)}
-                   >
-                     <option value="Active">Active State</option>
-                     <option value="Waiting">Waiting State</option>
-                     <option value="Blocked">Blocked State</option>
-                   </select>
-                 </div>
-
-                 {/* Recurrence Setup */}
-                 <div className="flex items-center bg-void border border-border/50 rounded-xl px-4 py-2 gap-3">
-                   <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">Recur:</span>
-                   <select 
-                     className="bg-transparent text-[10px] font-extrabold text-zinc-500 outline-none appearance-none hover:text-zinc-300 transition-colors cursor-pointer"
-                     value={task.recurrenceIntervalDays || ""}
-                     onChange={(e) => handleSetRecurrence(task.id, parseInt(e.target.value))}
-                   >
-                     <option value="">Static</option>
-                     <option value="1">Daily</option>
-                     <option value="7">Weekly</option>
-                     <option value="15">Bi-Weekly</option>
-                     <option value="30">Monthly</option>
-                   </select>
-                 </div>
-
-                 {task.state === 'Waiting' && (
-                    <div className="flex items-center bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2 text-[10px] font-bold text-amber-500 uppercase tracking-widest">
-                      Deferred
-                    </div>
-                 )}
-              </div>
-            </div>
+              subtasksCount={task.subtasksCount}
+              completedSubtasksCount={task.completedSubtasksCount}
+            />
           ))}
         </div>
 

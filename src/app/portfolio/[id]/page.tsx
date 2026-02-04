@@ -2,14 +2,18 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Anchor, ArrowLeft, Plus, Settings2, Trash2 } from "lucide-react";
+import { Anchor, Settings2, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { FocusCard } from "@/components/ui/FocusCard";
 import { KPIManager } from "@/components/portfolio/KPIManager";
 import { useProjectAnalytics } from "@/hooks/useProjectAnalytics";
-import { Clock, TrendingUp, Zap, Brain } from "lucide-react";
+import { Clock, TrendingUp, Zap, Brain, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useTaskFulfillment } from "@/hooks/useTaskFulfillment";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { AnimatePresence } from "framer-motion";
+import { mapTaskData, Task } from "@/lib/engine";
 
 interface Project {
   id: string;
@@ -20,13 +24,6 @@ interface Project {
   settings?: {
     enabledMetrics?: string[];
   };
-}
-
-interface Task {
-  id: string;
-  title: string;
-  state: string;
-  est_duration_minutes: number;
 }
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,6 +45,8 @@ export default function ProjectDetailPage() {
   });
   const [activeTab, setActiveTab] = useState<"Active" | "Waiting" | "History">("Active");
   const { metrics, isLoading: isAnalyticsLoading } = useProjectAnalytics(id as string);
+  const { completeTask } = useTaskFulfillment();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // 1. Fetch Project Query
   const { data: project, isLoading: isProjectLoading } = useQuery<Project>({
@@ -69,10 +68,10 @@ export default function ProjectDetailPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
-        .select('*')
+        .select('*, subtasks(is_completed)')
         .eq('project_id', id)
         .order('created_at', { ascending: false });
-      return data || [];
+      return (data || []).map(mapTaskData);
     },
     enabled: !!id
   });
@@ -145,6 +144,34 @@ export default function ProjectDetailPage() {
     }
   });
 
+  const completeMutation = useMutation({
+    mutationFn: async (task: Task) => {
+      await completeTask({
+        id: task.id,
+        title: task.title,
+        projectId: id as string,
+        durationMinutes: task.durationMinutes,
+        recurrenceIntervalDays: task.recurrenceIntervalDays,
+        energyTag: task.energyTag
+      });
+    },
+    onMutate: async (task: Task) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', id] });
+      const previous = queryClient.getQueryData<Task[]>(['tasks', 'project', id]);
+      queryClient.setQueryData(['tasks', 'project', id], (old: Task[] | undefined) => 
+        old?.map((t: Task) => t.id === task.id ? { ...t, state: 'Done' } : t)
+      );
+      return { previous };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'project', id] });
+      queryClient.invalidateQueries({ queryKey: ['history'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+    }
+  });
+
+  const handleComplete = (task: any) => completeMutation.mutate(task);
+
   const deleteProjectMutation = useMutation<void, Error, string>({
     mutationFn: async (projectId) => {
       const { error } = await supabase
@@ -179,6 +206,8 @@ export default function ProjectDetailPage() {
 
   const handleUndo = (taskId: string) => undoMutation.mutate(taskId);
   const handleDeleteTask = (taskId: string) => deleteTaskMutation.mutate(taskId);
+
+  const selectedTask = (tasks as any[]).find(t => t.id === selectedTaskId);
 
   const isLoading = isProjectLoading || isTasksLoading;
 
@@ -399,10 +428,14 @@ export default function ProjectDetailPage() {
                     title={task.title}
                     project={project.name}
                     tier={project.tier as any}
-                    duration={`${task.est_duration_minutes}m`}
+                    duration={`${task.durationMinutes}m`}
                     isActive={task.state === 'Active'}
                     onUndo={activeTab === 'History' ? () => handleUndo(task.id) : undefined}
-                    onDelete={activeTab === 'History' ? () => handleDeleteTask(task.id) : undefined}
+                    onDelete={() => handleDeleteTask(task.id)}
+                    onComplete={task.state === 'Active' ? () => handleComplete(task) : undefined}
+                    onClick={() => setSelectedTaskId(task.id)}
+                    subtasksCount={task.subtasksCount}
+                    completedSubtasksCount={task.completedSubtasksCount}
                   />
                 ))
               ) : (
@@ -417,6 +450,17 @@ export default function ProjectDetailPage() {
           </section>
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedTaskId && selectedTask && (
+          <TaskDetailModal 
+            key={selectedTaskId}
+            task={selectedTask} 
+            isOpen={!!selectedTaskId} 
+            onClose={() => setSelectedTaskId(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
