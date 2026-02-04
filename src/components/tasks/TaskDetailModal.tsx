@@ -51,6 +51,17 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
   const [editedNote, setEditedNote] = useState(task.description || "");
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [editedSubtaskTitle, setEditedSubtaskTitle] = useState("");
+  const [editedRecurrence, setEditedRecurrence] = useState((task.recurrenceIntervalDays || "").toString());
+
+  // Fetch Projects for selector
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const { data } = await supabase.from('projects').select('id, name');
+      return data || [];
+    },
+    enabled: isOpen
+  });
 
   // Mutations
   const updateTaskMutation = useMutation({
@@ -66,6 +77,12 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
       if (updates.est_duration_minutes) domainUpdates.durationMinutes = updates.est_duration_minutes;
       if (updates.description !== undefined) domainUpdates.description = updates.description;
       if (updates.due_date !== undefined) domainUpdates.dueDate = updates.due_date ? new Date(updates.due_date) : undefined;
+      if (updates.project_id !== undefined) {
+          domainUpdates.projectId = updates.project_id;
+          domainUpdates.projectName = projects.find(p => p.id === updates.project_id)?.name || "Inbox";
+      }
+      if (updates.energy_tag !== undefined) domainUpdates.energyTag = updates.energy_tag;
+      if (updates.recurrence_interval_days !== undefined) domainUpdates.recurrenceIntervalDays = updates.recurrence_interval_days;
       
       queryClient.setQueryData(["tasks", "active"], (old: any) => 
         old?.map((t: any) => t.id === task.id ? { ...t, ...domainUpdates } : t)
@@ -142,7 +159,8 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
       setEditedTitle(task.title);
     }
     setEditedDuration((task.durationMinutes || 30).toString());
-  }, [task.id, task.title, task.durationMinutes, isEditingTitle]);
+    setEditedRecurrence((task.recurrenceIntervalDays || "").toString());
+  }, [task.id, task.title, task.durationMinutes, task.recurrenceIntervalDays, isEditingTitle]);
 
   useEffect(() => {
     // Skip on mount, let the mount effect handle it
@@ -278,9 +296,19 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
           <div className="px-8 pt-8 pb-6 border-b border-border/10">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1 mr-4">
-                <span className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-2 block font-mono">
-                  {task.projectName || "Inbox"}
-                </span>
+                <select 
+                    className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-2 block font-mono bg-transparent border-none outline-none cursor-pointer hover:text-primary/80 transition-all appearance-none"
+                    value={task.projectId || "NONE"}
+                    onChange={(e) => {
+                        const val = e.target.value === "NONE" ? null : e.target.value;
+                        updateTaskMutation.mutate({ project_id: val });
+                    }}
+                >
+                    <option value="NONE" className="bg-void text-zinc-400">Inbox</option>
+                    {projects.map(p => (
+                        <option key={p.id} value={p.id} className="bg-void text-zinc-300">{p.name}</option>
+                    ))}
+                </select>
                 
                 {isEditingTitle ? (
                     <input 
@@ -375,13 +403,36 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                     </div>
                 </div>
 
-                <div className={cn(
-                    "px-4 py-2 border rounded-xl flex items-center gap-2 h-fit",
-                    task.energyTag === "Deep" ? "bg-purple-500/10 border-purple-500/20 text-purple-500" :
-                    task.energyTag === "Normal" ? "bg-blue-500/10 border-blue-500/20 text-blue-500" :
-                    "bg-rose-500/10 border-rose-500/20 text-rose-500"
-                )}>
-                    <span className="text-[10px] font-bold uppercase tracking-widest">{task.energyTag}</span>
+                <select 
+                    className={cn(
+                        "px-4 py-2 border rounded-xl flex items-center gap-2 h-fit text-[10px] font-bold uppercase tracking-widest outline-none cursor-pointer transition-all appearance-none text-center",
+                        task.energyTag === "Deep" ? "bg-purple-500/10 border-purple-500/20 text-purple-500" :
+                        task.energyTag === "Normal" ? "bg-blue-500/10 border-blue-500/20 text-blue-500" :
+                        "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                    )}
+                    value={task.energyTag}
+                    onChange={(e) => updateTaskMutation.mutate({ energy_tag: e.target.value })}
+                >
+                    <option value="Deep" className="bg-void text-purple-500">Deep</option>
+                    <option value="Normal" className="bg-void text-blue-500">Normal</option>
+                    <option value="Shallow" className="bg-void text-rose-500">Shallow</option>
+                </select>
+
+                <div className="bg-void/50 border border-border/20 rounded-xl flex items-center gap-2 px-4 py-2 hover:border-primary/30 transition-all cursor-pointer group/rec min-w-[100px]">
+                    <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest shrink-0">Every</span>
+                    <input 
+                        className="bg-transparent border-none outline-none text-[10px] font-bold text-zinc-400 uppercase tracking-widest w-8 text-center"
+                        value={editedRecurrence}
+                        onChange={(e) => setEditedRecurrence(e.target.value)}
+                        onBlur={() => {
+                            const val = editedRecurrence === "" ? null : parseInt(editedRecurrence);
+                            if (val !== task.recurrenceIntervalDays) {
+                                updateTaskMutation.mutate({ recurrence_interval_days: val });
+                            }
+                        }}
+                        placeholder="--"
+                    />
+                    <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest shrink-0">Days</span>
                 </div>
             </div>
           </div>
