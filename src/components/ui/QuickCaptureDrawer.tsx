@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { X, Send, Sparkles, Check, Edit2, Mic, Square, Zap, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, parseDuration } from "@/lib/utils";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceVisualizer } from "./VoiceVisualizer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -77,7 +77,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       const { error: taskError } = await supabase.from('tasks').insert({
         title: result.task,
         project_id: finalProjectId || null,
-        est_duration_minutes: parseInt(result.duration) || 30,
+        est_duration_minutes: parseDuration(result.duration?.toString()) || null,
         energy_tag: result.energy || 'Shallow',
         recurrence_interval_days: result.recurrence || null,
         state: 'Active'
@@ -98,7 +98,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
           projectTier: 3,
           lastTouchedAt: new Date(),
           decayThresholdDays: 15,
-          durationMinutes: parseInt(newResult.duration) || 30,
+          durationMinutes: parseDuration(newResult.duration?.toString()) || 0,
           energyTag: newResult.energy || 'Shallow',
           recurrenceIntervalDays: newResult.recurrence || null,
           state: 'Active',
@@ -129,7 +129,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       title: "",
       projectId: "NONE",
       projectName: "",
-      duration: "30",
+      duration: "30m",
       energy: "Normal"
     });
   };
@@ -180,7 +180,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         title: data.task,
         projectId: matchingProject?.id || "NONE",
         projectName: matchingProject?.name || data.project || "",
-        duration: data.duration?.replace(/\D/g, '') || "30",
+        duration: data.duration || "30m",
         energy: data.energy || "Normal"
       });
       setIsAiEnabled(false);
@@ -277,19 +277,34 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 overflow-visible">
                       <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Duration</label>
-                      <select 
-                        className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none appearance-none"
-                        value={manualData.duration}
-                        onChange={(e) => setManualData({ ...manualData, duration: e.target.value })}
-                      >
-                        <option value="15">15 mins</option>
-                        <option value="30">30 mins</option>
-                        <option value="60">1 hour</option>
-                        <option value="120">2 hours</option>
-                        <option value="240">4 hours</option>
-                      </select>
+                      <div className="space-y-2">
+                        <input 
+                          type="text"
+                          className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800"
+                          placeholder="e.g. 30m, 1.5h, None"
+                          value={manualData.duration}
+                          onChange={(e) => setManualData({ ...manualData, duration: e.target.value })}
+                        />
+                        <div className="flex gap-1.5 flex-wrap">
+                          {['None', '15m', '30m', '1h', '2h'].map(suggest => (
+                            <button
+                              key={suggest}
+                              type="button"
+                              onClick={() => setManualData({ ...manualData, duration: suggest })}
+                              className={cn(
+                                "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-tight transition-all",
+                                manualData.duration === suggest 
+                                  ? "bg-primary text-void" 
+                                  : "bg-void border border-border text-zinc-600 hover:border-zinc-700"
+                              )}
+                            >
+                              {suggest}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Energy</label>
