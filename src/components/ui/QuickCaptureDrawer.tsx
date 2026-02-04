@@ -24,8 +24,9 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     title: "",
     projectId: "NONE",
     projectName: "",
-    duration: "30",
-    energy: "Normal"
+    duration: "30m",
+    energy: "Normal",
+    dueDate: ""
   });
 
   const supabase = createClient();
@@ -80,6 +81,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         est_duration_minutes: parseDuration(result.duration?.toString()) || null,
         energy_tag: result.energy || 'Shallow',
         recurrence_interval_days: result.recurrence || null,
+        due_date: result.dueDate || null,
         state: 'Active'
       });
 
@@ -101,6 +103,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
           durationMinutes: parseDuration(newResult.duration?.toString()) || 0,
           energyTag: newResult.energy || 'Shallow',
           recurrenceIntervalDays: newResult.recurrence || null,
+          dueDate: newResult.dueDate ? new Date(newResult.dueDate) : undefined,
           state: 'Active',
           created_at: new Date().toISOString(),
         };
@@ -130,7 +133,8 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       projectId: "NONE",
       projectName: "",
       duration: "30m",
-      energy: "Normal"
+      energy: "Normal",
+      dueDate: ""
     });
   };
 
@@ -181,7 +185,8 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         projectId: matchingProject?.id || "NONE",
         projectName: matchingProject?.name || data.project || "",
         duration: data.duration || "30m",
-        energy: data.energy || "Normal"
+        energy: data.energy || "Normal",
+        dueDate: data.dueDate ? new Date(new Date(data.dueDate).getTime() - new Date(data.dueDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""
       });
       setIsAiEnabled(false);
       setInput("");
@@ -206,6 +211,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       duration: manualData.duration,
       energy: manualData.energy,
       projectId: manualData.projectId === "NONE" ? undefined : manualData.projectId,
+      dueDate: manualData.dueDate || undefined,
       recurrence: null
     });
   };
@@ -340,6 +346,54 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Deadline</label>
+                    <div className="space-y-2">
+                        <input 
+                          type="datetime-local"
+                          className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800 text-zinc-300"
+                          value={manualData.dueDate}
+                          onChange={(e) => setManualData({ ...manualData, dueDate: e.target.value })}
+                        />
+                        <div className="flex gap-1.5 flex-wrap">
+                          {[
+                            { label: 'None', value: '' },
+                            { label: 'Today', value: (() => {
+                                const d = new Date();
+                                d.setHours(18, 0, 0, 0); // Default to 6 PM
+                                return d.toISOString().slice(0, 16);
+                            })() },
+                            { label: 'Tmrw', value: (() => {
+                                const d = new Date();
+                                d.setDate(d.getDate() + 1);
+                                d.setHours(9, 0, 0, 0); // Default to tomorrow 9 AM
+                                return d.toISOString().slice(0, 16);
+                            })() },
+                            { label: 'Next Mon', value: (() => {
+                                const d = new Date();
+                                d.setDate(d.getDate() + (1 + 7 - d.getDay()) % 7 || 7);
+                                d.setHours(9, 0, 0, 0);
+                                return d.toISOString().slice(0, 16);
+                            })() }
+                          ].map(suggest => (
+                            <button
+                              key={suggest.label}
+                              type="button"
+                              onClick={() => setManualData({ ...manualData, dueDate: suggest.value })}
+                              className={cn(
+                                "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-tight transition-all",
+                                manualData.dueDate === suggest.value 
+                                  ? "bg-primary text-void" 
+                                  : "bg-void border border-border text-zinc-600 hover:border-zinc-700"
+                              )}
+                            >
+                              {suggest.label}
+                            </button>
+                          ))}
+                        </div>
+                    </div>
                   </div>
 
                   <motion.button

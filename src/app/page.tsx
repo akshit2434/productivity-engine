@@ -197,6 +197,7 @@ export default function Home() {
                       project={task.projectName}
                       tier={task.projectTier as any}
                       duration={task.durationMinutes < 60 ? `${task.durationMinutes}m` : `${Math.floor(task.durationMinutes / 60)}h`}
+                      dueDate={task.dueDate}
                       isActive={true}
                       onComplete={() => {
                         if (completeMutation.isPending) return;

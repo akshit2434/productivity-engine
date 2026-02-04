@@ -209,6 +209,7 @@ export default function TasksPage() {
               project={task.projectName}
               tier={task.projectTier as any}
               duration={`${task.durationMinutes}m`}
+              dueDate={task.dueDate}
               isActive={task.state === 'Active'}
               onComplete={() => handleComplete(task)}
               onDelete={() => handleDelete(task.id)}

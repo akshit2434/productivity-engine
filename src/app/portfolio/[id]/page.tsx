@@ -442,6 +442,7 @@ export default function ProjectDetailPage() {
                         project={project.name}
                         tier={project.tier as any}
                         duration={`${task.durationMinutes}m`}
+                        dueDate={task.dueDate}
                         isActive={task.state === 'Active'}
                         onUndo={activeTab === 'History' ? () => handleUndo(task.id) : undefined}
                         onDelete={() => handleDeleteTask(task.id)}

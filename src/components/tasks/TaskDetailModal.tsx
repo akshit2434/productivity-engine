@@ -14,7 +14,8 @@ import {
   Square,
   Edit3,
   Eye,
-  Sparkles
+  Sparkles,
+  Calendar
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
       if (updates.title) domainUpdates.title = updates.title;
       if (updates.est_duration_minutes) domainUpdates.durationMinutes = updates.est_duration_minutes;
       if (updates.description !== undefined) domainUpdates.description = updates.description;
+      if (updates.due_date !== undefined) domainUpdates.dueDate = updates.due_date ? new Date(updates.due_date) : undefined;
       
       queryClient.setQueryData(["tasks", "active"], (old: any) => 
         old?.map((t: any) => t.id === task.id ? { ...t, ...domainUpdates } : t)
@@ -314,8 +316,8 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
               </button>
             </div>
 
-            <div className="flex gap-4">
-                <div className="bg-void/50 border border-border/20 rounded-xl flex items-center gap-3 px-4 py-2 hover:border-primary/30 transition-all cursor-pointer group/dur">
+            <div className="flex flex-wrap gap-3">
+                <div className="bg-void/50 border border-border/20 rounded-xl flex items-center gap-3 px-4 py-2 hover:border-primary/30 transition-all cursor-pointer group/dur min-w-[120px]">
                     <Clock size={14} className="text-zinc-500 group-hover/dur:text-primary transition-colors shrink-0" />
                     <input 
                         className="bg-transparent border-none outline-none text-[10px] font-bold text-zinc-400 uppercase tracking-widest w-12 text-center"
@@ -328,13 +330,56 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                             }
                         }}
                     />
-                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest shrink-0">Minutes</span>
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest shrink-0">Mins</span>
                 </div>
+                
+                <div className="flex flex-col gap-2 min-w-[200px]">
+                    <div className={cn(
+                        "bg-void/50 border border-border/20 rounded-xl flex items-center gap-3 px-4 py-2 hover:border-primary/30 transition-all cursor-pointer group/deadline",
+                        task.dueDate && "border-primary/20"
+                    )}>
+                        <Calendar size={14} className="text-zinc-500 group-hover/deadline:text-primary transition-colors shrink-0" />
+                        <input 
+                            type="datetime-local"
+                            className="bg-transparent border-none outline-none text-[10px] font-bold text-zinc-400 uppercase tracking-widest outline-none text-zinc-300 w-full"
+                            value={task.dueDate ? new Date(new Date(task.dueDate).getTime() - new Date(task.dueDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                updateTaskMutation.mutate({ due_date: val ? new Date(val).toISOString() : null });
+                            }}
+                        />
+                    </div>
+                    <div className="flex gap-1.5 ml-1">
+                        {[
+                            { label: 'None', value: null },
+                            { label: 'EOD', value: (() => {
+                                const d = new Date();
+                                d.setHours(18, 0, 0, 0);
+                                return d.toISOString();
+                            })() },
+                            { label: 'Tmrw', value: (() => {
+                                const d = new Date();
+                                d.setDate(d.getDate() + 1);
+                                d.setHours(9, 0, 0, 0);
+                                return d.toISOString();
+                            })() }
+                        ].map(opt => (
+                            <button
+                                key={opt.label || 'none'}
+                                onClick={() => updateTaskMutation.mutate({ due_date: opt.value })}
+                                className="px-2 py-0.5 rounded-md border border-border/20 text-[8px] font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:border-primary/30 transition-all bg-void/30"
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className={cn(
-                    "px-4 py-2 border rounded-xl flex items-center gap-2",
-                    task.energyTag === "Grind" ? "bg-rose-500/10 border-rose-500/20 text-rose-500" :
-                    task.energyTag === "Creative" ? "bg-purple-500/10 border-purple-500/20 text-purple-500" :
-                    "bg-blue-500/10 border-blue-500/20 text-blue-500"
+                    "px-4 py-2 border rounded-xl flex items-center gap-2 h-fit",
+                    task.energyTag === "Deep" ? "bg-purple-500/10 border-purple-500/20 text-purple-500" :
+                    task.energyTag === "Normal" ? "bg-blue-500/10 border-blue-500/20 text-blue-500" :
+                    "bg-rose-500/10 border-rose-500/20 text-rose-500"
                 )}>
                     <span className="text-[10px] font-bold uppercase tracking-widest">{task.energyTag}</span>
                 </div>

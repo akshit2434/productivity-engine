@@ -13,7 +13,12 @@ Rules:
 3. If no logical match exists in "Existing Projects", you may create a new creative project name.
 4. If project is not obvious and no match found, use "Inbox".
 5. Default duration to "30m" if unspecified.
-6. Use the "Current Context" (Time/Date) to inform duration or recurrence if relative terms are used.
+6. Use the "Current Context" (Time/Date) to inform duration, recurrence, or "dueDate" if relative terms are used.
+7. If a specific deadline or time is mentioned (e.g. "by 5pm", "next Tuesday", "tomorrow noon"), extract it into "dueDate" as an ISO 8601 string. If no deadline is mentioned, "dueDate" should be null.
+8. Map "energy" to one of: "Deep", "Normal", "Shallow".
+   - Deep: High focus (Strategic, Design, Writing).
+   - Normal: Standard focus (Coding, Logistics).
+   - Shallow: Low focus (Admin, Quick tasks).
 `;
 
 const schema: Schema = {
@@ -34,11 +39,16 @@ const schema: Schema = {
     },
     energy: {
       type: SchemaType.STRING,
-      description: "Energy type (Grind, Creative, Shallow)",
+      description: "Energy type (Deep, Normal, Shallow)",
     },
     recurrence: {
       type: SchemaType.NUMBER,
       description: "Number of days for interval (null if single-time)",
+      nullable: true,
+    },
+    dueDate: {
+      type: SchemaType.STRING,
+      description: "ISO 8601 string for deadline (null if none)",
       nullable: true,
     },
   },

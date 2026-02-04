@@ -1,6 +1,6 @@
 import React from "react";
-import { cn } from "@/lib/utils";
-import { RotateCcw, Trash2, Check, Maximize2 } from "lucide-react";
+import { cn, formatTimeRemaining } from "@/lib/utils";
+import { RotateCcw, Trash2, Check, Maximize2, AlertCircle } from "lucide-react";
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
@@ -16,6 +16,7 @@ interface FocusCardProps {
   onClick?: () => void;
   subtasksCount?: number;
   completedSubtasksCount?: number;
+  dueDate?: Date;
 }
 
 const TIER_COLORS = {
@@ -36,7 +37,8 @@ export function FocusCard({
   onComplete,
   onClick,
   subtasksCount = 0,
-  completedSubtasksCount = 0
+  completedSubtasksCount = 0,
+  dueDate
 }: FocusCardProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const x = useMotionValue(0);
@@ -74,6 +76,21 @@ export function FocusCard({
         </div>
         
         <div className="flex items-center gap-2">
+          {dueDate && (() => {
+            const { label, urgency } = formatTimeRemaining(dueDate);
+            return (
+              <div className={cn(
+                "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all",
+                urgency === 'high' ? "bg-rose-500/10 border-rose-500/30 text-rose-500 animate-pulse" :
+                urgency === 'medium' ? "bg-amber-500/10 border-amber-500/30 text-amber-500" :
+                urgency === 'low' ? "bg-primary/10 border-primary/30 text-primary" :
+                "bg-zinc-500/10 border-border/30 text-zinc-500"
+              )}>
+                <AlertCircle size={10} />
+                <span>{label}</span>
+              </div>
+            );
+          })()}
           <span className="text-[10px] font-bold text-zinc-500 bg-void/50 px-2 py-0.5 rounded-full border border-border/30">
             {duration}
           </span>
@@ -162,7 +179,7 @@ export function FocusCard({
         dragConstraints={{ left: -120, right: 120 }}
         onDragEnd={handleDragEnd}
         style={{ x, background }}
-        onClick={() => !isMobile && onClick?.()}
+        onClick={() => onClick?.()}
         className={cn(
           "relative bg-surface border border-transparent rounded-2xl p-5 transition-all duration-300 card-shadow cursor-pointer z-10 touch-pan-y",
           isActive ? "focus-precision border-primary/20 bg-surface/80" : "hover:border-border/50",

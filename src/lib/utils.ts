@@ -27,3 +27,15 @@ export function parseDuration(input: string): number | null {
   
   return totalMinutes > 0 ? Math.round(totalMinutes) : null;
 }
+export function formatTimeRemaining(date: Date): { label: string; urgency: 'none' | 'low' | 'medium' | 'high' } {
+  const now = new Date();
+  const diff = date.getTime() - now.getTime();
+  const hours = diff / (1000 * 60 * 60);
+  
+  if (diff < 0) return { label: "Overdue", urgency: 'high' };
+  if (hours < 2) return { label: `${Math.round(diff / (1000 * 60))}m`, urgency: 'high' };
+  if (hours < 24) return { label: `${Math.round(hours)}h`, urgency: 'medium' };
+  if (hours < 48) return { label: "Tomorrow", urgency: 'low' };
+  
+  return { label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), urgency: 'none' };
+}

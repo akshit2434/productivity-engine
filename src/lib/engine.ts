@@ -9,7 +9,7 @@ export interface Task {
   lastTouchedAt: Date;
   decayThresholdDays: number;
   dueDate?: Date;
-  energyTag: 'Grind' | 'Creative' | 'Shallow';
+  energyTag: 'Deep' | 'Normal' | 'Shallow';
   durationMinutes: number;
   recurrenceIntervalDays?: number;
   state: 'Active' | 'Waiting' | 'Blocked' | 'Completed' | 'Decayed' | 'Done';
@@ -29,9 +29,9 @@ const TIER_WEIGHTS: Record<ProjectTier, number> = {
 };
 
 const MODE_TAG_MAP: Record<SessionMode, Task['energyTag'][]> = {
-  'Deep Work': ['Creative', 'Grind'],
+  'Deep Work': ['Deep', 'Normal'],
   'Low Energy': ['Shallow'],
-  'Creative': ['Creative'],
+  'Creative': ['Deep'],
   'Admin': ['Shallow'],
 };
 
