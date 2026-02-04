@@ -20,7 +20,8 @@ The goal is to elevate the "Productivity Engine" from a static tool to an active
 *   **Processing:**
     *   Audio is transcribed using Gemini 2.0 Flash (Multimodal).
     *   Transcribed text is fed into the existing `parse-task` logic.
-    *   Standard confirmation UI appears with the inferred Project, Duration, and Recurrence.
+    *   Standard confirmation UI appears with the inferred Project, Duration, **Energy Tag (Deep/Normal/Shallow)**, and **Deadline**.
+    *   Manual overrides available via shorthand chips (EOD, Tmrw, +1h).
 
 ---
 

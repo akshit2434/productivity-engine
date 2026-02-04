@@ -27,7 +27,8 @@ Each project is a persistent entity requiring maintenance:
 The home screen is a **Syllabus**—a curated list of what to execute *next*, calculated dynamically:
 `Score = (Tier Weight) × (Days Since Last Touch / Decay Threshold) × (Context Multiplier)`
 
-- **Filters:** By Time Available (15m, 30m, 1h) and Energy Mode (Deep Work, Administrative, etc.).
+- **Filters:** By Time Available (15m, 30m, 1h) and Energy Mode (**Deep Work**, **Creative**, **Low Energy**, **Admin**).
+- **Deadlines:** Integrated "Mission Critical" logic for tasks due within 24h.
 - **Zero-Delay Sync:** Powered by Supabase Realtime & TanStack Query for instant feedback.
 
 ---
