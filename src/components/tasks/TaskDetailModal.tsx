@@ -91,6 +91,16 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
   });
 
+  const deleteTaskMutation = useMutation({
+    mutationFn: async () => {
+      await supabase.from("tasks").delete().eq("id", task.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      onClose();
+    }
+  });
+
   const addSubtaskMutation = useMutation({
     mutationFn: async (title: string) => {
       await supabase.from("subtasks").insert({ task_id: task.id, title });
@@ -336,12 +346,26 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                     </h2>
                 )}
               </div>
-              <button 
-                onClick={onClose}
-                className="w-10 h-10 shrink-0 flex items-center justify-center rounded-2xl bg-void border border-border/50 text-zinc-500 hover:text-white transition-all ml-4"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to vanish this task?")) {
+                      deleteTaskMutation.mutate();
+                    }
+                  }}
+                  disabled={deleteTaskMutation.isPending}
+                  className="w-10 h-10 shrink-0 flex items-center justify-center rounded-2xl bg-void border border-rose-500/20 text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/5 transition-all"
+                  title="Vanish Task"
+                >
+                  {deleteTaskMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                </button>
+                <button 
+                  onClick={onClose}
+                  className="w-10 h-10 shrink-0 flex items-center justify-center rounded-2xl bg-void border border-border/50 text-zinc-500 hover:text-white transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
