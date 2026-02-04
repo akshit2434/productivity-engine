@@ -12,7 +12,7 @@ import { Clock, TrendingUp, Zap, Brain, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useTaskFulfillment } from "@/hooks/useTaskFulfillment";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { mapTaskData, Task } from "@/lib/engine";
 
 interface Project {
@@ -418,35 +418,50 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {tasks.filter(t => activeTab === "History" ? t.state === 'Done' : t.state === activeTab).length > 0 ? (
-                tasks
-                  .filter(t => activeTab === "History" ? t.state === 'Done' : t.state === activeTab)
-                  .map(task => (
-                  <FocusCard 
-                    key={task.id}
-                    title={task.title}
-                    project={project.name}
-                    tier={project.tier as any}
-                    duration={`${task.durationMinutes}m`}
-                    isActive={task.state === 'Active'}
-                    onUndo={activeTab === 'History' ? () => handleUndo(task.id) : undefined}
-                    onDelete={() => handleDeleteTask(task.id)}
-                    onComplete={task.state === 'Active' ? () => handleComplete(task) : undefined}
-                    onClick={() => setSelectedTaskId(task.id)}
-                    subtasksCount={task.subtasksCount}
-                    completedSubtasksCount={task.completedSubtasksCount}
-                  />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-32 bg-surface/30 border border-dashed border-border/50 rounded-3xl">
-                  <div className="w-16 h-16 bg-void/50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-border">
-                    <Brain className="text-zinc-800" size={32} />
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+              >
+                {tasks.filter(t => activeTab === "History" ? t.state === 'Done' : t.state === activeTab).length > 0 ? (
+                  tasks
+                    .filter(t => activeTab === "History" ? t.state === 'Done' : t.state === activeTab)
+                    .map((task, index) => (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <FocusCard 
+                        title={task.title}
+                        project={project.name}
+                        tier={project.tier as any}
+                        duration={`${task.durationMinutes}m`}
+                        isActive={task.state === 'Active'}
+                        onUndo={activeTab === 'History' ? () => handleUndo(task.id) : undefined}
+                        onDelete={() => handleDeleteTask(task.id)}
+                        onComplete={task.state === 'Active' ? () => handleComplete(task) : undefined}
+                        onClick={() => setSelectedTaskId(task.id)}
+                        subtasksCount={task.subtasksCount}
+                        completedSubtasksCount={task.completedSubtasksCount}
+                      />
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-32 bg-surface/30 border border-dashed border-border/50 rounded-3xl">
+                    <div className="w-16 h-16 bg-void/50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-border">
+                      <Brain className="text-zinc-800" size={32} />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Zero focus fragments in {activeTab} state</p>
                   </div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Zero focus fragments in {activeTab} state</p>
-                </div>
-              )}
-            </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </section>
         </div>
       </div>

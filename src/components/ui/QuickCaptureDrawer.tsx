@@ -1,22 +1,33 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Send, Sparkles, Check, Edit2, Mic, Square } from "lucide-react";
+import { X, Send, Sparkles, Check, Edit2, Mic, Square, Zap, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceVisualizer } from "./VoiceVisualizer";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase";
 
 interface QuickCaptureDrawerProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase";
-
 export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps) {
+  const [isAiEnabled, setIsAiEnabled] = useState(false);
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Manual Form State
+  const [manualData, setManualData] = useState({
+    title: "",
+    projectId: "NONE",
+    projectName: "",
+    duration: "30",
+    energy: "Normal"
+  });
+
   const [parsedResult, setParsedResult] = useState<{
     task: string;
     project: string;
@@ -41,12 +52,16 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
 
   // 2. Add Task Mutation
   const addTaskMutation = useMutation({
-    mutationFn: async (result: typeof parsedResult) => {
+    mutationFn: async (result: any) => {
       if (!result) return;
       let finalProjectId = result.projectId;
 
-      // If no projectId but project name exists, create it
-      if (!finalProjectId && result.project && result.project !== "None") {
+      // Handle "None" or "Inbox" project
+      if (finalProjectId === "NONE") {
+        finalProjectId = null;
+      }
+
+      if (!finalProjectId && result.project && result.project !== "None" && result.project !== "NONE") {
         const { data: existingProj } = await supabase
           .from('projects')
           .select('id')
@@ -83,12 +98,11 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       await queryClient.cancelQueries({ queryKey: ['tasks', 'active'] });
       const previousTasks = queryClient.getQueryData<any[]>(['tasks', 'active']);
       
-      // Optimistic insert
       if (previousTasks && newResult) {
         const optimisticTask = {
           id: Math.random().toString(),
           title: newResult.task,
-          projectId: newResult.projectId,
+          projectId: newResult.projectId === "NONE" ? null : newResult.projectId,
           projectName: newResult.project || "Inbox",
           projectTier: 3,
           lastTouchedAt: new Date(),
@@ -101,7 +115,6 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         };
         queryClient.setQueryData(['tasks', 'active'], [optimisticTask, ...previousTasks]);
       }
-      
       return { previousTasks };
     },
     onError: (err, variables, context) => {
@@ -115,10 +128,21 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     },
     onSuccess: () => {
       onClose();
-      setParsedResult(null);
-      setInput("");
+      resetState();
     }
   });
+
+  const resetState = () => {
+    setParsedResult(null);
+    setInput("");
+    setManualData({
+      title: "",
+      projectId: "NONE",
+      projectName: "",
+      duration: "30",
+      energy: "Normal"
+    });
+  };
 
   const { isRecording, startRecording, stopRecording, analyser, audioBlob } = useVoiceRecorder();
 
@@ -129,14 +153,12 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     
     try {
       let body: any = { input };
-
       if (targetBlob) {
-        // Convert blob to base64
         const reader = new FileReader();
         const base64Promise = new Promise<string>((resolve) => {
           reader.onloadend = () => {
             const result = reader.result as string;
-            resolve(result.split(',')[1]); // Remove data:audio/...;base64,
+            resolve(result.split(',')[1]);
           };
         });
         reader.readAsDataURL(targetBlob);
@@ -181,169 +203,301 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     }
   };
 
-  // Automatically process when recording stops and we have a blob
   React.useEffect(() => {
-    if (!isRecording && audioBlob) {
+    if (!isRecording && audioBlob && isAiEnabled) {
       handleProcess(audioBlob);
     }
-  }, [isRecording, audioBlob]);
+  }, [isRecording, audioBlob, isAiEnabled]);
+
+  const handleManualSubmit = () => {
+    addTaskMutation.mutate({
+      task: manualData.title,
+      project: manualData.projectName || "None",
+      duration: manualData.duration,
+      energy: manualData.energy,
+      projectId: manualData.projectId === "NONE" ? undefined : manualData.projectId,
+      recurrence: null
+    });
+  };
 
   const handleConfirm = () => addTaskMutation.mutate(parsedResult);
   const isSaving = addTaskMutation.isPending;
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center">
-      <div 
-        className="absolute inset-0 bg-void/60 backdrop-blur-sm" 
-        onClick={onClose}
-      />
-      
-      <div className="relative w-full max-w-md bg-surface border-t border-border rounded-t-2xl p-6 pb-12 animate-in slide-in-from-bottom duration-300">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xs font-mono uppercase tracking-widest text-primary flex items-center gap-2">
-            <Sparkles size={14} /> Quick Capture
-          </h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white">
-            <X size={20} />
-          </button>
-        </div>
-
-        {!parsedResult ? (
-          <div className="space-y-4">
-            {isRecording ? (
-              <div className="w-full h-32 bg-void/50 border border-primary/20 rounded-xl flex flex-col items-center justify-center gap-4 relative overflow-hidden">
-                <div className="absolute inset-0 bg-primary/5 animate-pulse" />
-                <VoiceVisualizer analyser={analyser} className="z-10 w-full" color="#6366f1" />
-                <p className="text-[10px] font-mono text-primary uppercase tracking-[0.2em] z-10">Listening...</p>
-              </div>
-            ) : (
-              <textarea
-                autoFocus
-                className="w-full h-32 bg-void border border-border rounded-lg p-4 font-mono text-sm focus:ring-1 focus:ring-primary outline-none resize-none placeholder:text-zinc-700"
-                placeholder="What's in your orbit?"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-              />
-            )}
-            
-            <div className="flex gap-2">
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={cn(
-                  "flex-1 h-12 rounded-lg font-mono uppercase text-xs font-bold flex items-center justify-center gap-2 transition-all",
-                  isRecording 
-                    ? "bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20" 
-                    : "bg-surface border border-border text-primary hover:bg-white/5"
-                )}
-              >
-                {isRecording ? (
-                  <>Stop Recording <Square size={14} /></>
-                ) : (
-                  <>Voice Mode <Mic size={14} /></>
-                )}
-              </button>
-              
-              {!isRecording && (
-                <button
-                  onClick={() => handleProcess()}
-                  disabled={!input || isProcessing}
-                  className="flex-[2] bg-primary text-void h-12 rounded-lg font-mono uppercase text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
-                >
-                  {isProcessing ? (
-                    <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
-                  ) : (
-                    <>Parse Brain <Send size={14} /></>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-void/60 backdrop-blur-sm" 
+            onClick={onClose}
+          />
+          
+          <motion.div 
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="relative w-full max-w-md bg-surface border-t border-border rounded-t-2xl p-6 pb-12 card-shadow"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xs font-mono uppercase tracking-widest text-primary flex items-center gap-2">
+                {isAiEnabled ? <Sparkles size={14} /> : <Zap size={14} />} 
+                {isAiEnabled ? "AI Quick Capture" : "Manual Task"}
+              </h2>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setIsAiEnabled(!isAiEnabled)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-tight transition-all",
+                    isAiEnabled 
+                      ? "bg-primary text-void shadow-[0_0_15px_rgba(99,102,241,0.3)]" 
+                      : "bg-void border border-border text-zinc-500 hover:text-primary hover:border-primary/30"
                   )}
+                >
+                  {isAiEnabled ? <Zap size={10} fill="currentColor" /> : <Sparkles size={10} />}
+                  {isAiEnabled ? "AI Mode" : "Manual"}
                 </button>
-              )}
-            </div>
-          </div>
-        )
- : (
-          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-void p-4 border border-primary/20 rounded-lg">
-              <span className="text-[10px] font-mono text-primary uppercase block mb-2">Inferred Intent</span>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 text-xs">Task</span>
-                  <span className="text-white text-sm font-medium">{parsedResult.task}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 text-xs">Project</span>
-                  <select 
-                    className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white text-xs outline-none focus:border-primary/50"
-                    value={parsedResult.projectId || "NEW"}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "NEW") {
-                        setParsedResult({ ...parsedResult, projectId: undefined });
-                      } else if (val === "NONE") {
-                        setParsedResult({ ...parsedResult, projectId: undefined, project: "None" });
-                      } else {
-                        const p = projects.find(proj => proj.id === val);
-                        setParsedResult({ ...parsedResult, projectId: val, project: p?.name || "" });
-                      }
-                    }}
-                  >
-                    {projects.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                    <option value="NEW">+ New: {parsedResult.projectId ? "Create New" : parsedResult.project}</option>
-                    <option value="NONE">None (Inbox)</option>
-                  </select>
-                </div>
-                {!parsedResult.projectId && parsedResult.project !== "None" && (
-                   <input 
-                    type="text"
-                    className="w-full bg-zinc-900/50 border border-dashed border-zinc-800 rounded px-2 py-1 text-zinc-400 text-[10px] mt-1 outline-none focus:border-primary/30"
-                    value={parsedResult.project}
-                    onChange={(e) => setParsedResult({ ...parsedResult, project: e.target.value })}
-                    placeholder="New Project Name..."
-                   />
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 text-xs">Duration</span>
-                  <span className="text-zinc-200 text-sm font-mono">{parsedResult.duration}</span>
-                </div>
-                {parsedResult.recurrence && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-zinc-500 text-xs">Recurrence</span>
-                    <span className="text-emerald-400 text-sm font-mono font-bold">
-                       Every {parsedResult.recurrence} days
-                    </span>
-                  </div>
-                )}
+                <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-1">
+                  <X size={18} />
+                </button>
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setParsedResult(null)}
-                disabled={isSaving}
-                className="flex-1 border border-border text-zinc-400 h-10 rounded-lg text-[10px] font-mono uppercase hover:text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <Edit2 size={12} /> Edit
-              </button>
-              <button
-                onClick={() => {
-                  if (isSaving) return;
-                  handleConfirm();
-                }}
-                disabled={isSaving}
-                className="flex-1 bg-primary text-void h-10 rounded-lg text-[10px] font-mono uppercase font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
-              >
-                {isSaving ? (
-                  <div className="w-3 h-3 border-2 border-void border-t-transparent animate-spin rounded-full" />
-                ) : (
-                  <>Confirm <Check size={14} /></>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+            <AnimatePresence mode="wait">
+              {!isAiEnabled ? (
+                <motion.div
+                  key="manual-form"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Title</label>
+                    <input 
+                      autoFocus
+                      type="text"
+                      className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800"
+                      placeholder="Enter task name..."
+                      value={manualData.title}
+                      onChange={(e) => setManualData({ ...manualData, title: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Duration</label>
+                      <select 
+                        className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none appearance-none"
+                        value={manualData.duration}
+                        onChange={(e) => setManualData({ ...manualData, duration: e.target.value })}
+                      >
+                        <option value="15">15 mins</option>
+                        <option value="30">30 mins</option>
+                        <option value="60">1 hour</option>
+                        <option value="120">2 hours</option>
+                        <option value="240">4 hours</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Energy</label>
+                      <select 
+                        className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none appearance-none"
+                        value={manualData.energy}
+                        onChange={(e) => setManualData({ ...manualData, energy: e.target.value })}
+                      >
+                        <option value="Shallow">Shallow</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Deep">Deep</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Project</label>
+                    <select 
+                      className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none appearance-none"
+                      value={manualData.projectId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "NONE") {
+                           setManualData({ ...manualData, projectId: "NONE", projectName: "Inbox" });
+                        } else {
+                           const p = projects.find((p: any) => p.id === val);
+                           setManualData({ ...manualData, projectId: val, projectName: p?.name || "" });
+                        }
+                      }}
+                    >
+                      <option value="NONE">Inbox</option>
+                      {projects.map((p: any) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleManualSubmit}
+                    disabled={!manualData.title || isSaving}
+                    className="w-full bg-primary text-void h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_20px_rgba(99,102,241,0.2)] mt-2"
+                  >
+                    {isSaving ? (
+                      <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
+                    ) : (
+                      <>Create Task <Check size={14} /></>
+                    )}
+                  </motion.button>
+                </motion.div>
+              ) : !parsedResult ? (
+                <motion.div 
+                  key="ai-input"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-4"
+                >
+                  {isRecording ? (
+                    <div className="w-full h-36 bg-void/50 border border-primary/20 rounded-2xl flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-primary/5 animate-pulse" />
+                      <VoiceVisualizer analyser={analyser} className="z-10 w-full" color="#6366f1" />
+                      <p className="text-[10px] font-mono text-primary uppercase tracking-[0.2em] z-10 font-bold">Listening...</p>
+                    </div>
+                  ) : (
+                    <textarea
+                      autoFocus
+                      className="w-full h-36 bg-void border border-border rounded-2xl p-5 font-medium text-sm focus:ring-1 focus:ring-primary outline-none resize-none placeholder:text-zinc-800 transition-all"
+                      placeholder="What have you achieved recently? Or what's your next mission?"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                    />
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={isRecording ? stopRecording : startRecording}
+                      className={cn(
+                        "w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center transition-all",
+                        isRecording 
+                          ? "bg-red-500/10 border border-red-500/20 text-red-500" 
+                          : "bg-surface border border-border text-primary hover:bg-primary/10"
+                      )}
+                    >
+                      {isRecording ? <Square size={20} /> : <Mic size={24} />}
+                    </motion.button>
+                    
+                    {!isRecording && (
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleProcess()}
+                        disabled={!input || isProcessing}
+                        className="flex-1 bg-primary text-void h-14 rounded-2xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all font-black shadow-[0_4px_20px_rgba(99,102,241,0.2)]"
+                      >
+                        {isProcessing ? (
+                          <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
+                        ) : (
+                          <>Deploy Intelligence <Send size={14} /></>
+                        )}
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="ai-result"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-6"
+                >
+                  <div className="bg-void p-5 border border-primary/20 rounded-2xl space-y-4">
+                    <span className="text-[10px] font-mono text-primary uppercase block tracking-widest font-bold">Inferred Intelligence</span>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start gap-4">
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase mt-1">Task</span>
+                        <input 
+                          type="text" 
+                          className="bg-transparent border-none text-white text-sm font-medium text-right outline-none focus:text-primary transition-colors flex-1"
+                          value={parsedResult.task}
+                          onChange={(e) => setParsedResult({ ...parsedResult, task: e.target.value })}
+                        />
+                      </div>
+                      <div className="h-px bg-border/50" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase">Project</span>
+                        <select 
+                          className="bg-surface/50 border border-border rounded-lg px-2 py-1 text-white text-xs outline-none focus:border-primary/50 text-right appearance-none cursor-pointer hover:bg-surface transition-colors"
+                          value={parsedResult.projectId || "NEW"}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "NEW") {
+                              setParsedResult({ ...parsedResult, projectId: undefined });
+                            } else if (val === "NONE") {
+                              setParsedResult({ ...parsedResult, projectId: undefined, project: "None" });
+                            } else {
+                              const p = (projects as any[]).find(proj => proj.id === val);
+                              setParsedResult({ ...parsedResult, projectId: val, project: p?.name || "" });
+                            }
+                          }}
+                        >
+                          {projects.map((p: any) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                          <option value="NEW">+ New: {parsedResult.projectId ? "Create New" : parsedResult.project}</option>
+                          <option value="NONE">None (Inbox)</option>
+                        </select>
+                      </div>
+                      {!parsedResult.projectId && parsedResult.project !== "None" && (
+                         <input 
+                          type="text"
+                          className="w-full bg-zinc-900/50 border border-dashed border-zinc-800 rounded-lg px-3 py-1.5 text-zinc-400 text-[10px] mt-1 outline-none focus:border-primary/30"
+                          value={parsedResult.project}
+                          onChange={(e) => setParsedResult({ ...parsedResult, project: e.target.value })}
+                          placeholder="Project name..."
+                         />
+                      )}
+                      <div className="h-px bg-border/50" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase">Duration</span>
+                        <span className="text-zinc-200 text-xs font-mono">{parsedResult.duration}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setParsedResult(null)}
+                      disabled={isSaving}
+                      className="flex-1 border border-border text-zinc-400 h-10 rounded-xl text-[10px] font-mono uppercase hover:text-white transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Edit2 size={12} /> Refine
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        if (isSaving) return;
+                        handleConfirm();
+                      }}
+                      disabled={isSaving}
+                      className="flex-1 bg-primary text-void h-10 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_15px_rgba(99,102,241,0.2)]"
+                    >
+                      {isSaving ? (
+                        <div className="w-3 h-3 border-2 border-void border-t-transparent animate-spin rounded-full" />
+                      ) : (
+                        <>Affirm <Check size={14} /></>
+                      )}
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

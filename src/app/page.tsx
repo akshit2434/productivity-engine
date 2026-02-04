@@ -14,7 +14,7 @@ import { sortTasksByUrgency, filterAdminTasks, mapTaskData } from "@/lib/engine"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Task } from "@/lib/engine";
 
 export default function Home() {
@@ -184,27 +184,33 @@ export default function Home() {
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {focusTasks.length > 0 ? (
-              focusTasks.map((task) => {
+              focusTasks.map((task, index) => {
                 return (
-                  <FocusCard
+                  <motion.div
                     key={task.id}
-                    title={task.title}
-                    project={task.projectName}
-                    tier={task.projectTier as any}
-                    duration={task.durationMinutes < 60 ? `${task.durationMinutes}m` : `${Math.floor(task.durationMinutes / 60)}h`}
-                    isActive={true}
-                    onComplete={() => {
-                      if (completeMutation.isPending) return;
-                      completeMutation.mutate(task);
-                    }}
-                    onDelete={() => {
-                      if (deleteMutation.isPending) return;
-                      deleteMutation.mutate(task.id);
-                    }}
-                    onClick={() => setSelectedTaskId(task.id)}
-                    subtasksCount={task.subtasksCount}
-                    completedSubtasksCount={task.completedSubtasksCount}
-                  />
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <FocusCard
+                      title={task.title}
+                      project={task.projectName}
+                      tier={task.projectTier as any}
+                      duration={task.durationMinutes < 60 ? `${task.durationMinutes}m` : `${Math.floor(task.durationMinutes / 60)}h`}
+                      isActive={true}
+                      onComplete={() => {
+                        if (completeMutation.isPending) return;
+                        completeMutation.mutate(task);
+                      }}
+                      onDelete={() => {
+                        if (deleteMutation.isPending) return;
+                        deleteMutation.mutate(task.id);
+                      }}
+                      onClick={() => setSelectedTaskId(task.id)}
+                      subtasksCount={task.subtasksCount}
+                      completedSubtasksCount={task.completedSubtasksCount}
+                    />
+                  </motion.div>
                 );
               })
             ) : !isLoading && (

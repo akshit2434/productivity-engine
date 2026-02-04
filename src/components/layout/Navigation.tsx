@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { label: "Prophet", href: "/chat", icon: Sparkles },
 ];
 
+import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { mapTaskData } from "@/lib/engine";
 
@@ -26,6 +27,7 @@ export function Navigation() {
   const supabase = createClient();
 
   const handlePrefetch = (href: string) => {
+    // ... existing prefetch logic remains the same
     if (href === "/history") {
       queryClient.prefetchQuery({
         queryKey: ['history'],
@@ -81,14 +83,29 @@ export function Navigation() {
               href={item.href}
               onMouseEnter={() => handlePrefetch(item.href)}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-2xl transition-all duration-300 min-w-0",
-                isActive ? "text-primary bg-primary/10" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-2xl transition-all duration-300 min-w-0 relative",
+                isActive ? "text-primary" : "text-zinc-500 hover:text-zinc-300"
               )}
             >
-              <Icon size={18} className="shrink-0" />
-              <span className="text-[8px] font-bold uppercase tracking-wider truncate w-full text-center px-1">
-                {item.label}
-              </span>
+              <AnimatePresence>
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-bg"
+                    className="absolute inset-0 bg-primary/10 rounded-2xl z-0"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </AnimatePresence>
+              
+              <motion.div
+                whileTap={{ scale: 0.9 }}
+                className="flex flex-col items-center gap-1.5 z-10"
+              >
+                <Icon size={18} className="shrink-0" />
+                <span className="text-[8px] font-bold uppercase tracking-wider truncate w-full text-center px-1">
+                  {item.label}
+                </span>
+              </motion.div>
             </Link>
           );
         })}
