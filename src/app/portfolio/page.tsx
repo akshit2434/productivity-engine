@@ -33,7 +33,13 @@ export default function PortfolioPage() {
   });
 
   const calculateHealth = (lastTouched: string, threshold: number) => {
-    const diff = new Date().getTime() - new Date(lastTouched).getTime();
+    // Defensive checks to prevent NaN during optimistic updates or loading states
+    if (!lastTouched || !threshold || threshold <= 0) return 100;
+    
+    const lastTouchedTime = new Date(lastTouched).getTime();
+    if (isNaN(lastTouchedTime)) return 100;
+    
+    const diff = new Date().getTime() - lastTouchedTime;
     const days = diff / (1000 * 60 * 60 * 24);
     const health = Math.max(0, 100 - (days / threshold) * 100);
     return Math.round(health);
@@ -60,12 +66,16 @@ export default function PortfolioPage() {
         {projects.map((project) => {
           const health = calculateHealth(project.last_touched_at, project.decay_threshold_days);
           const tierColor = project.tier === 1 ? "bg-tier-1" : project.tier === 2 ? "bg-tier-2" : "bg-tier-3";
+          const isOptimistic = project.id.startsWith('temp-');
 
           return (
             <Link 
-              href={`/portfolio/${project.id}`}
+              href={isOptimistic ? "#" : `/portfolio/${project.id}`}
               key={project.id} 
-              className="bg-surface border border-transparent rounded-3xl p-6 relative group hover:border-border/50 transition-all card-shadow block"
+              className={cn(
+                "bg-surface border border-transparent rounded-3xl p-6 relative group hover:border-border/50 transition-all card-shadow block",
+                isOptimistic && "opacity-70 cursor-not-allowed pointer-events-none animate-pulse"
+              )}
             >
               <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-4">

@@ -20,28 +20,50 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
   const supabase = createClient();
   const queryClient = useQueryClient();
 
+  interface CreateProjectVars {
+    name: string;
+    tier: number;
+    decayThreshold: number;
+  }
+
   const createProjectMutation = useMutation({
-    mutationFn: async () => {
-      if (!name) return;
-      const { data, error } = await supabase.from('projects').insert({
-        name,
-        tier,
-        decay_threshold_days: decayThreshold,
-        last_touched_at: new Date().toISOString()
-      }).select().single();
-      if (error) throw error;
+    mutationFn: async (vars: CreateProjectVars) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const insertData: any = {
+        name: vars.name,
+        tier: vars.tier,
+        decay_threshold_days: vars.decayThreshold,
+      };
+      
+      if (session?.user?.id) {
+        insertData.user_id = session.user.id;
+      }
+
+      console.log("Initiating project creation with payload:", insertData);
+
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([insertData])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Supabase Error during project creation:", error);
+        throw error;
+      }
       return data;
     },
-    onMutate: async () => {
+    onMutate: async (vars: CreateProjectVars) => {
       await queryClient.cancelQueries({ queryKey: ['projects'] });
       const previousProjects = queryClient.getQueryData<any[]>(['projects']);
 
       if (previousProjects) {
         const optimisticProject = {
           id: 'temp-' + Math.random().toString(),
-          name,
-          tier,
-          decay_threshold_days: decayThreshold,
+          name: vars.name,
+          tier: vars.tier,
+          decay_threshold_days: vars.decayThreshold,
           last_touched_at: new Date().toISOString()
         };
         queryClient.setQueryData(['projects'], [...previousProjects, optimisticProject].sort((a, b) => a.tier - b.tier));
@@ -56,6 +78,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
       return { previousProjects };
     },
     onError: (err, variables, context) => {
+      console.error("Mutation failed:", err);
       if (context?.previousProjects) {
         queryClient.setQueryData(['projects'], context.previousProjects);
       }
@@ -64,6 +87,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     }
   });
+
 
   if (!isOpen) return null;
 
@@ -141,7 +165,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
           </div>
 
           <button
-            onClick={() => createProjectMutation.mutate()}
+            onClick={() => createProjectMutation.mutate({ name, tier, decayThreshold })}
             disabled={!name || isSubmitting}
             className="w-full bg-primary text-void h-14 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-3 hover:opacity-90 disabled:opacity-30 transition-all shadow-lg shadow-primary/20 mt-4"
           >
