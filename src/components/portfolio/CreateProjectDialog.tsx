@@ -5,6 +5,7 @@ import { X, Check, Anchor, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
+import { getProjectColor } from "@/lib/colors";
 
 interface CreateProjectDialogProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
         name: vars.name,
         tier: vars.tier,
         decay_threshold_days: vars.decayThreshold,
+        color: getProjectColor(vars.name),
       };
       
       if (session?.user?.id) {
@@ -66,6 +68,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
           name: vars.name,
           tier: vars.tier,
           decay_threshold_days: vars.decayThreshold,
+          color: getProjectColor(vars.name),
           last_touched_at: new Date().toISOString()
         };
         queryClient.setQueryData(['projects'], [...previousProjects, optimisticProject].sort((a, b) => a.tier - b.tier));

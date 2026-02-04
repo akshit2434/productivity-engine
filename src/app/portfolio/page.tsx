@@ -6,16 +6,18 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase";
 
+import { useQuery } from "@tanstack/react-query";
+import { CreateProjectDialog } from "@/components/portfolio/CreateProjectDialog";
+import { getProjectColor, hexToRgba } from "@/lib/colors";
+
 interface Project {
   id: string;
   name: string;
   tier: number;
   last_touched_at: string;
   decay_threshold_days: number;
+  color?: string;
 }
-
-import { useQuery } from "@tanstack/react-query";
-import { CreateProjectDialog } from "@/components/portfolio/CreateProjectDialog";
 
 export default function PortfolioPage() {
   const supabase = createClient();
@@ -65,6 +67,7 @@ export default function PortfolioPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((project) => {
           const health = calculateHealth(project.last_touched_at, project.decay_threshold_days);
+          const projectColor = getProjectColor(project.name, project.color);
           const tierColor = project.tier === 1 ? "bg-tier-1" : project.tier === 2 ? "bg-tier-2" : "bg-tier-3";
           const isOptimistic = project.id.startsWith('temp-');
 
@@ -79,11 +82,14 @@ export default function PortfolioPage() {
             >
               <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-4">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center bg-void border border-border/50", 
-                    project.tier === 1 && "text-tier-1",
-                    project.tier === 2 && "text-tier-2",
-                    project.tier === 3 && "text-tier-3"
-                  )}>
+                  <div 
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center bg-void border transition-all"
+                    style={{ 
+                      borderColor: hexToRgba(projectColor, 0.3),
+                      color: projectColor,
+                      boxShadow: `0 0 20px ${hexToRgba(projectColor, 0.1)}`
+                    }}
+                  >
                     <Anchor size={24} />
                   </div>
                   <div>
@@ -106,8 +112,11 @@ export default function PortfolioPage() {
                 </div>
                 <div className="h-2 w-full bg-void rounded-full overflow-hidden p-[1px] border border-border/20">
                   <div 
-                    className={cn("h-full rounded-full transition-all duration-1000", health > 50 ? "bg-emerald-500" : health > 30 ? "bg-amber-500" : "bg-rose-500")}
-                    style={{ width: `${health}%` }}
+                    className="h-full rounded-full transition-all duration-1000"
+                    style={{ 
+                      width: `${health}%`,
+                      backgroundColor: health > 50 ? '#10b981' : health > 30 ? '#f59e0b' : '#f43f5e'
+                    }}
                   />
                 </div>
               </div>

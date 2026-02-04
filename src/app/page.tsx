@@ -31,7 +31,7 @@ export default function Home() {
         .select(`
           id, title, description, project_id, due_date, est_duration_minutes, energy_tag,
           last_touched_at, recurrence_interval_days, waiting_until,
-          projects(name, tier, decay_threshold_days),
+          projects(name, tier, decay_threshold_days, color),
           subtasks(is_completed)
         `)
         .eq('state', 'Active')
@@ -154,25 +154,29 @@ export default function Home() {
               Today
             </h1>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-4">
              <Link 
                href="/chat"
-               className="h-10 px-4 md:h-14 md:px-6 rounded-2xl md:rounded-3xl bg-primary/10 border border-primary/20 flex items-center gap-2 text-primary card-shadow hover:bg-primary/20 transition-all font-bold text-xs md:text-sm tracking-wide"
+               className="h-10 px-4 md:h-16 md:px-8 rounded-2xl md:rounded-[2rem] bg-primary text-void flex items-center gap-3 card-shadow hover:opacity-90 transition-all font-black text-[10px] md:text-xs tracking-[0.2em]"
              >
-               <Sparkles size={16} />
-               <span className="hidden sm:inline">CONSULT PROPHET</span>
+               <Sparkles size={18} strokeWidth={2.5} />
+               <span>CONSULT PROPHET</span>
              </Link>
-             <div className="w-10 h-10 md:w-14 md:h-14 rounded-full md:rounded-3xl bg-surface border border-border flex items-center justify-center text-zinc-400 card-shadow">
-               <Clock className="md:w-6 md:h-6" size={18} />
+             <div className="w-10 h-10 md:w-16 md:h-16 rounded-2xl md:rounded-[2rem] bg-surface border border-border/50 flex items-center justify-center text-zinc-400 card-shadow">
+               <Clock className="md:w-7 md:h-7" size={18} />
              </div>
           </div>
         </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-        <div className="md:col-span-12 space-y-0">
-          <ModeSelector />
-          <TimeAvailableSelector />
+        <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-surface/40 backdrop-blur-md border border-border/20 rounded-[2rem] p-4 flex flex-col justify-center">
+            <ModeSelector />
+          </div>
+          <div className="bg-surface/40 backdrop-blur-md border border-border/20 rounded-[2rem] p-4 flex flex-col justify-center">
+            <TimeAvailableSelector />
+          </div>
         </div>
 
         <div className="md:col-span-7 lg:col-span-8 space-y-4">
@@ -210,6 +214,7 @@ export default function Home() {
                       onClick={() => setSelectedTaskId(task.id)}
                       subtasksCount={task.subtasksCount}
                       completedSubtasksCount={task.completedSubtasksCount}
+                      projectColor={task.projectColor}
                     />
                   </motion.div>
                 );

@@ -1,5 +1,6 @@
 import React from "react";
 import { cn, formatTimeRemaining } from "@/lib/utils";
+import { hexToRgba } from "@/lib/colors";
 import { RotateCcw, Trash2, Check, Maximize2, AlertCircle } from "lucide-react";
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -17,6 +18,7 @@ interface FocusCardProps {
   subtasksCount?: number;
   completedSubtasksCount?: number;
   dueDate?: Date;
+  projectColor?: string;
 }
 
 const TIER_COLORS = {
@@ -38,7 +40,8 @@ export function FocusCard({
   onClick,
   subtasksCount = 0,
   completedSubtasksCount = 0,
-  dueDate
+  dueDate,
+  projectColor
 }: FocusCardProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const x = useMotionValue(0);
@@ -67,9 +70,10 @@ export function FocusCard({
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
-          <div className={cn("w-1.5 h-1.5 rounded-full", 
-            tier === 1 ? "bg-tier-1" : tier === 2 ? "bg-tier-2" : tier === 3 ? "bg-tier-3" : "bg-tier-4"
-          )} />
+          <div 
+            className="w-1.5 h-1.5 rounded-full" 
+            style={{ backgroundColor: projectColor || (tier === 1 ? "#ef4444" : tier === 2 ? "#3b82f6" : "#10b981") }}
+          />
           <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none">
             {project}
           </span>
@@ -135,7 +139,12 @@ export function FocusCard({
           )}
           <button 
             onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-            className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center hover:bg-primary hover:text-void transition-all"
+            className="w-12 h-12 rounded-full flex items-center justify-center hover:text-void transition-all"
+            style={{ 
+              backgroundColor: projectColor ? `${projectColor}12` : 'rgba(var(--primary), 0.08)', 
+              borderColor: projectColor ? `${projectColor}20` : 'rgba(var(--primary), 0.15)',
+              color: projectColor || 'var(--primary)'
+            }}
             title="Open Details"
           >
             <Maximize2 size={20} />
@@ -178,14 +187,26 @@ export function FocusCard({
         drag={isMobile ? "x" : false}
         dragConstraints={{ left: -120, right: 120 }}
         onDragEnd={handleDragEnd}
-        style={{ x, background }}
         onClick={() => onClick?.()}
         className={cn(
-          "relative bg-surface border border-transparent rounded-2xl p-5 transition-all duration-300 card-shadow cursor-pointer z-10 touch-pan-y",
-          isActive ? "focus-precision border-primary/20 bg-surface/80" : "hover:border-border/50",
-          !isMobile && "group-hover:border-primary/30"
+          "relative bg-surface border rounded-2xl p-5 transition-all duration-300 card-shadow cursor-pointer z-10 touch-pan-y",
+          isActive ? "bg-surface/90 border-transparent shadow-[0_0_30px_-10px_rgba(0,0,0,0.5)]" : "border-transparent hover:border-border/50",
+          !isMobile && "group-hover:border-border/30"
         )}
+        style={{ 
+          x, 
+          background: isActive ? `linear-gradient(135deg, ${hexToRgba(projectColor || '#facc15', 0.05)} 0%, rgba(15, 15, 18, 0.95) 100%)` : background,
+          borderColor: isActive && projectColor ? `${projectColor}22` : undefined,
+          boxShadow: isActive && projectColor ? `0 0 40px -15px ${hexToRgba(projectColor, 0.2)}` : undefined
+        }}
       >
+        {/* Active Left Accent Bar */}
+        {isActive && (
+          <div 
+            className="absolute left-0 top-6 bottom-6 w-1 rounded-r-full"
+            style={{ backgroundColor: projectColor || '#facc15' }}
+          />
+        )}
         {cardContent}
       </motion.div>
     </div>

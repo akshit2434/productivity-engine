@@ -14,6 +14,7 @@ import { useTaskFulfillment } from "@/hooks/useTaskFulfillment";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { mapTaskData, Task } from "@/lib/engine";
+import { getProjectColor, hexToRgba, PRESET_COLORS } from "@/lib/colors";
 
 interface Project {
   id: string;
@@ -24,6 +25,7 @@ interface Project {
   settings?: {
     enabledMetrics?: string[];
   };
+  color?: string;
 }
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,6 +41,7 @@ export default function ProjectDetailPage() {
     name: "",
     tier: 3,
     decay_threshold_days: 15,
+    color: "",
     settings: {
       enabledMetrics: ["weekly_intensity", "7d_velocity", "focus_consistency", "deep_work_ratio"]
     }
@@ -82,6 +85,7 @@ export default function ProjectDetailPage() {
         name: project.name,
         tier: project.tier,
         decay_threshold_days: project.decay_threshold_days,
+        color: project.color || "",
         settings: project.settings || {
           enabledMetrics: ["weekly_intensity", "7d_velocity", "focus_consistency", "deep_work_ratio"]
         } as any
@@ -214,6 +218,7 @@ export default function ProjectDetailPage() {
   if (isLoading) return <div className="px-6 pt-32 text-center text-[10px] font-extrabold uppercase tracking-[0.2em] text-zinc-700 animate-pulse">Syncing Matrix...</div>;
   if (!project) return <div className="px-6 pt-32 text-center text-[10px] font-extrabold uppercase tracking-[0.2em] text-rose-500/50">Entity Not Found</div>;
 
+  const projectColor = getProjectColor(project.name, project.color);
   const tierColor = project.tier === 1 ? "text-tier-1" : project.tier === 2 ? "text-tier-2" : "text-tier-3";
 
   return (
@@ -227,7 +232,10 @@ export default function ProjectDetailPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className={cn("w-2 h-2 rounded-full", tierColor.replace('text-', 'bg-'))} />
+              <div 
+                className="w-2 h-2 rounded-full" 
+                style={{ backgroundColor: projectColor }}
+              />
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em]">
                 Tier_{project.tier}
               </span>
@@ -240,6 +248,7 @@ export default function ProjectDetailPage() {
               "w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl flex items-center justify-center transition-all card-shadow border shrink-0",
               isEditing ? 'bg-primary border-primary text-void' : 'bg-surface border-border/50 text-zinc-400 hover:text-white'
             )}
+            style={isEditing ? { backgroundColor: projectColor, borderColor: projectColor } : {}}
           >
             <Settings2 size={24} />
           </button>
@@ -287,9 +296,44 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Visual Identity</label>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_COLORS.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setEditForm({...editForm, color: c})}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 transition-all",
+                        editForm.color === c ? "border-white scale-110" : "border-transparent"
+                      )}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  <div className="relative">
+                    <input 
+                      type="color"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      value={editForm.color}
+                      onChange={(e) => setEditForm({...editForm, color: e.target.value})}
+                    />
+                    <div 
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold",
+                        !PRESET_COLORS.includes(editForm.color) ? "border-white scale-110" : "border-zinc-700"
+                      )}
+                      style={{ backgroundColor: editForm.color }}
+                    >
+                      +
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <button 
                 onClick={handleUpdateProject}
-                className="w-full bg-primary text-void font-bold py-4 rounded-2xl text-[11px] uppercase tracking-widest hover:bg-primary/90 transition-all card-shadow mt-6"
+                className="w-full text-void font-bold py-4 rounded-2xl text-[11px] uppercase tracking-widest hover:opacity-90 transition-all card-shadow mt-6"
+                style={{ backgroundColor: editForm.color || projectColor }}
               >
                 Save Protocol Changes
               </button>
@@ -339,9 +383,12 @@ export default function ProjectDetailPage() {
                   <div 
                     className={cn(
                       "h-full rounded-full transition-all duration-1000",
-                      (new Date().getTime() - new Date(project.last_touched_at).getTime()) / (1000 * 60 * 60 * 24) > project.decay_threshold_days ? "bg-rose-500" : "bg-primary"
+                      (new Date().getTime() - new Date(project.last_touched_at).getTime()) / (1000 * 60 * 60 * 24) > project.decay_threshold_days ? "bg-rose-500" : ""
                     )}
-                    style={{ width: `${Math.min(100, ((new Date().getTime() - new Date(project.last_touched_at).getTime()) / (1000 * 60 * 60 * 24)) / project.decay_threshold_days * 100)}%` }}
+                    style={{ 
+                      width: `${Math.min(100, ((new Date().getTime() - new Date(project.last_touched_at).getTime()) / (1000 * 60 * 60 * 24)) / project.decay_threshold_days * 100)}%`,
+                      backgroundColor: (new Date().getTime() - new Date(project.last_touched_at).getTime()) / (1000 * 60 * 60 * 24) > project.decay_threshold_days ? undefined : projectColor
+                    }}
                   />
                 </div>
              </div>
@@ -378,10 +425,10 @@ export default function ProjectDetailPage() {
                     <Zap size={14} />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Focus Consistency</span>
                   </div>
-                  <span className="text-lg font-extrabold text-primary">{metrics.consistencyScore}%</span>
+                  <span className="text-lg font-extrabold" style={{ color: projectColor }}>{metrics.consistencyScore}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-void rounded-full overflow-hidden p-[1px] border border-border/20">
-                  <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${metrics.consistencyScore}%` }} />
+                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${metrics.consistencyScore}%`, backgroundColor: projectColor }} />
                 </div>
               </div>
             </div>
@@ -402,16 +449,17 @@ export default function ProjectDetailPage() {
                     className={cn(
                       "px-6 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-xl",
                       activeTab === tab 
-                        ? "bg-primary text-void card-shadow" 
+                        ? "text-void card-shadow" 
                         : "text-zinc-500 hover:text-zinc-300"
                     )}
+                    style={activeTab === tab ? { backgroundColor: projectColor } : {}}
                   >
                     {tab}
                   </button>
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: projectColor, opacity: 0.4 }} />
                 <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
                   {tasks.filter(t => activeTab === "History" ? t.state === 'Done' : t.state === activeTab).length} Entities
                 </span>
@@ -450,6 +498,7 @@ export default function ProjectDetailPage() {
                         onClick={() => setSelectedTaskId(task.id)}
                         subtasksCount={task.subtasksCount}
                         completedSubtasksCount={task.completedSubtasksCount}
+                        projectColor={projectColor}
                       />
                     </motion.div>
                   ))

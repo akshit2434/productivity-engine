@@ -27,6 +27,7 @@ import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { getProjectColor } from "@/lib/colors";
 
 interface TaskDetailModalProps {
   task: Task;
@@ -57,11 +58,14 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data } = await supabase.from('projects').select('id, name');
+      const { data } = await supabase.from('projects').select('id, name, color');
       return data || [];
     },
     enabled: isOpen
   });
+
+  const selectedProject = projects.find(p => p.id === task.projectId);
+  const projectColor = getProjectColor(task.projectName, selectedProject?.color);
 
   // Mutations
   const updateTaskMutation = useMutation({
@@ -307,7 +311,8 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1 mr-4">
                 <select 
-                    className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-2 block font-mono bg-transparent border-none outline-none cursor-pointer hover:text-primary/80 transition-all appearance-none"
+                    className="text-[10px] font-bold uppercase tracking-[0.3em] mb-2 block font-mono bg-transparent border-none outline-none cursor-pointer hover:opacity-80 transition-all appearance-none"
+                    style={{ color: projectColor }}
                     value={task.projectId || "NONE"}
                     onChange={(e) => {
                         const val = e.target.value === "NONE" ? null : e.target.value;
@@ -393,7 +398,8 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                         <Calendar size={14} className="text-zinc-500 group-hover/deadline:text-primary transition-colors shrink-0" />
                         <input 
                             type="datetime-local"
-                            className="bg-transparent border-none outline-none text-[10px] font-bold text-zinc-400 uppercase tracking-widest outline-none text-zinc-300 w-full"
+                            className="bg-transparent border-none outline-none text-[10px] font-bold uppercase tracking-widest outline-none w-full"
+                            style={{ color: projectColor }}
                             value={task.dueDate ? new Date(new Date(task.dueDate).getTime() - new Date(task.dueDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
                             onChange={(e) => {
                                 const val = e.target.value;
@@ -471,7 +477,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
               )}
             >
               Sticky Note {task.description && "(Active)"}
-              {activeTab === "notes" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+              {activeTab === "notes" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: projectColor }} />}
             </button>
             <button 
               onClick={() => setActiveTab("subtasks")}
@@ -481,7 +487,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
               )}
             >
               Structural Fragments {subtasks.length > 0 && `(${subtasks.length})`}
-              {activeTab === "subtasks" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+              {activeTab === "subtasks" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: projectColor }} />}
             </button>
           </div>
 
@@ -565,8 +571,9 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                       onClick={handleToggleRecording}
                       className={cn(
                         "h-14 flex-1 rounded-[1.25rem] border flex items-center justify-center gap-3 transition-all card-shadow",
-                        isRecording ? "bg-rose-500 border-rose-500 text-void scale-95" : "bg-primary border-primary text-void hover:bg-primary/90"
+                        isRecording ? "bg-rose-500 border-rose-500 text-void scale-95" : "text-void hover:opacity-90"
                       )}
+                      style={!isRecording ? { backgroundColor: projectColor, borderColor: projectColor } : {}}
                     >
                       <Mic size={20} className={isRecording ? "animate-pulse" : ""} />
                       <span className="text-[11px] font-extrabold uppercase tracking-widest">
@@ -593,7 +600,8 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                   <button 
                     onClick={() => addSubtaskMutation.mutate(newSubtask)}
                     disabled={!newSubtask.trim()}
-                    className="w-14 h-14 bg-primary text-void rounded-2xl flex items-center justify-center hover:bg-primary/90 transition-all disabled:opacity-50"
+                    className="w-14 h-14 text-void rounded-2xl flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50"
+                    style={{ backgroundColor: projectColor }}
                   >
                     <Plus size={24} />
                   </button>

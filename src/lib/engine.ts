@@ -1,3 +1,5 @@
+import { getProjectColor } from "./colors";
+
 export type ProjectTier = 1 | 2 | 3 | 4;
 
 export interface Task {
@@ -17,6 +19,7 @@ export interface Task {
   subtasksCount?: number;
   completedSubtasksCount?: number;
   waitingUntil?: Date | null;
+  projectColor?: string;
 }
 
 export type SessionMode = 'Deep Work' | 'Low Energy' | 'Creative' | 'Admin';
@@ -82,7 +85,8 @@ export function mapTaskData(t: any): Task {
     description: t.description || "",
     subtasksCount: t.subtasks?.length || 0,
     completedSubtasksCount: t.subtasks?.filter((st: any) => st.is_completed).length || 0,
-    waitingUntil: t.waiting_until ? new Date(t.waiting_until) : null
+    waitingUntil: t.waiting_until ? new Date(t.waiting_until) : null,
+    projectColor: getProjectColor(t.projects?.name || "Inbox", t.projects?.color)
   };
 }
 

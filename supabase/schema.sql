@@ -11,6 +11,7 @@ create table projects (
   last_touched_at timestamp with time zone default now(),
   kpi_name text,
   kpi_value numeric default 0,
+  color text,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
