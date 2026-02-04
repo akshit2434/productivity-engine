@@ -195,18 +195,21 @@ export function FocusCard({
         )}
         style={{ 
           x, 
-          background: isActive ? `linear-gradient(135deg, ${hexToRgba(projectColor || '#facc15', 0.05)} 0%, rgba(15, 15, 18, 0.95) 100%)` : background,
-          borderColor: isActive && projectColor ? `${projectColor}22` : undefined,
+          background: isActive 
+            ? `linear-gradient(135deg, ${hexToRgba(projectColor || '#facc15', 0.05)} 0%, rgba(15, 15, 18, 0.95) 100%)` 
+            : `linear-gradient(135deg, ${hexToRgba(projectColor || '#facc15', 0.02)} 0%, rgba(15, 15, 18, 0.98) 100%)`,
+          borderColor: isActive && projectColor ? `${projectColor}22` : projectColor ? `${projectColor}15` : undefined,
           boxShadow: isActive && projectColor ? `0 0 40px -15px ${hexToRgba(projectColor, 0.2)}` : undefined
         }}
       >
-        {/* Active Left Accent Bar */}
-        {isActive && (
-          <div 
-            className="absolute left-0 top-6 bottom-6 w-1 rounded-r-full"
-            style={{ backgroundColor: projectColor || '#facc15' }}
-          />
-        )}
+        {/* Left Accent Bar */}
+        <div 
+          className="absolute left-0 top-6 bottom-6 w-1 rounded-r-full transition-all duration-300"
+          style={{ 
+            backgroundColor: projectColor || '#facc15',
+            opacity: isActive ? 1 : 0.3
+          }}
+        />
         {cardContent}
       </motion.div>
     </div>
