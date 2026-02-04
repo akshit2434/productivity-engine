@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -7,38 +7,70 @@ const SYSTEM_PROMPT = `
 You are the brain of "Entropy UI", a high-performance productivity engine.
 Your task is to parse raw user input into a structured JSON object for task creation.
 
-Input: Raw text or audio transcript.
-Output: JSON object with:
-- task: The concise action item.
-- project: The inferred project name (be creative but logical).
-- duration: Estimated time (e.g., "15m", "1h", "4h").
-- energy: Energy type ("Grind", "Creative", "Shallow").
-  - Creative: High focus, non-linear (Design, Writing, R&D).
-  - Grind: High focus, linear (Coding, Spreadsheets, Logistics).
-  - Shallow: Low focus, quick (Email, Calls, Admin).
-- recurrence: Number of days for interval (null if single-time).
-  - "Daily" -> 1
-  - "Weekly" -> 7
-  - "Every 3 days" -> 3
-  - "Monthly" -> 30
-
 Rules:
-1. If project is not obvious, use "Inbox".
-2. Default duration to "30m" if unspecified.
-3. Keep the JSON clean.
+1. Transform raw input/transcripts into a concise, action-oriented "task" title (e.g., "Call mom" instead of "I should really give my mom a call").
+2. Prioritize matching "project" to the "Existing Projects" list provided.
+3. If no logical match exists in "Existing Projects", you may create a new creative project name.
+4. If project is not obvious and no match found, use "Inbox".
+5. Default duration to "30m" if unspecified.
+6. Use the "Current Context" (Time/Date) to inform duration or recurrence if relative terms are used.
 `;
+
+const schema: Schema = {
+  description: "Task parsing schema",
+  type: SchemaType.OBJECT,
+  properties: {
+    task: {
+      type: SchemaType.STRING,
+      description: "The concise action item",
+    },
+    project: {
+      type: SchemaType.STRING,
+      description: "The inferred project name (check existing list first)",
+    },
+    duration: {
+      type: SchemaType.STRING,
+      description: "Estimated time (e.g., '15m', '1h', '4h')",
+    },
+    energy: {
+      type: SchemaType.STRING,
+      description: "Energy type (Grind, Creative, Shallow)",
+    },
+    recurrence: {
+      type: SchemaType.NUMBER,
+      description: "Number of days for interval (null if single-time)",
+      nullable: true,
+    },
+  },
+  required: ["task", "project", "duration", "energy"],
+};
 
 export async function POST(req: Request) {
   try {
-    const { input, audio, mimeType } = await req.json();
+    const { input, audio, mimeType, existingProjects } = await req.json();
 
     if (!input && !audio) {
       return NextResponse.json({ error: "Missing input or audio" }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+      },
+    });
     
-    const promptParts: any[] = [{ text: SYSTEM_PROMPT }];
+    const now = new Date();
+    const contextPrompt = `
+Current Context: ${now.toLocaleString()} (${now.toLocaleDateString('en-US', { weekday: 'long' })})
+Existing Projects: ${existingProjects?.length > 0 ? existingProjects.join(", ") : "None"}
+    `;
+
+    const promptParts: any[] = [
+      { text: SYSTEM_PROMPT },
+      { text: contextPrompt }
+    ];
     
     if (audio && mimeType) {
       promptParts.push({
@@ -53,15 +85,8 @@ export async function POST(req: Request) {
     }
 
     const result = await model.generateContent(promptParts);
-
     const responseText = result.response.text();
-    // Extract JSON from response (handling potential markdown formatting)
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    const parsedData = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-
-    if (!parsedData) {
-      throw new Error("Failed to parse AI response");
-    }
+    const parsedData = JSON.parse(responseText);
 
     return NextResponse.json(parsedData);
   } catch (error) {

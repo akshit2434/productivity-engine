@@ -28,15 +28,6 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     energy: "Normal"
   });
 
-  const [parsedResult, setParsedResult] = useState<{
-    task: string;
-    project: string;
-    duration: string;
-    energy: string;
-    recurrence?: number | null;
-    projectId?: string;
-  } | null>(null);
-
   const supabase = createClient();
   const queryClient = useQueryClient();
 
@@ -133,7 +124,6 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   });
 
   const resetState = () => {
-    setParsedResult(null);
     setInput("");
     setManualData({
       title: "",
@@ -152,7 +142,10 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     setIsProcessing(true);
     
     try {
-      let body: any = { input };
+      let body: any = { 
+        input,
+        existingProjects: projects.map((p: any) => p.name)
+      };
       if (targetBlob) {
         const reader = new FileReader();
         const base64Promise = new Promise<string>((resolve) => {
@@ -165,6 +158,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         const base64Audio = await base64Promise;
         
         body = {
+          ...body,
           audio: base64Audio,
           mimeType: targetBlob.type
         };
@@ -181,23 +175,19 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       const data = await response.json();
       const matchingProject = projects.find((p: any) => p.name.toLowerCase() === data.project?.toLowerCase());
 
-      setParsedResult({
-        task: data.task,
-        project: data.project,
-        duration: data.duration,
-        energy: data.energy || 'Shallow',
-        recurrence: data.recurrence || null,
-        projectId: matchingProject?.id
+      // Populate manual form and exit AI mode
+      setManualData({
+        title: data.task,
+        projectId: matchingProject?.id || "NONE",
+        projectName: matchingProject?.name || data.project || "",
+        duration: data.duration?.replace(/\D/g, '') || "30",
+        energy: data.energy || "Normal"
       });
+      setIsAiEnabled(false);
+      setInput("");
     } catch (error) {
       console.error(error);
-      setParsedResult({
-        task: input || "Voice Task",
-        project: "Inbox",
-        duration: "30m",
-        energy: 'Shallow',
-        recurrence: null
-      });
+      setIsAiEnabled(false);
     } finally {
       setIsProcessing(false);
     }
@@ -220,7 +210,6 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     });
   };
 
-  const handleConfirm = () => addTaskMutation.mutate(parsedResult);
   const isSaving = addTaskMutation.isPending;
 
   return (
@@ -351,7 +340,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                     )}
                   </motion.button>
                 </motion.div>
-              ) : !parsedResult ? (
+              ) : (
                 <motion.div 
                   key="ai-input"
                   initial={{ opacity: 0, x: -20 }}
@@ -403,94 +392,6 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                         )}
                       </motion.button>
                     )}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key="ai-result"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-6"
-                >
-                  <div className="bg-void p-5 border border-primary/20 rounded-2xl space-y-4">
-                    <span className="text-[10px] font-mono text-primary uppercase block tracking-widest font-bold">Inferred Intelligence</span>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start gap-4">
-                        <span className="text-zinc-500 text-[10px] font-mono uppercase mt-1">Task</span>
-                        <input 
-                          type="text" 
-                          className="bg-transparent border-none text-white text-sm font-medium text-right outline-none focus:text-primary transition-colors flex-1"
-                          value={parsedResult.task}
-                          onChange={(e) => setParsedResult({ ...parsedResult, task: e.target.value })}
-                        />
-                      </div>
-                      <div className="h-px bg-border/50" />
-                      <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 text-[10px] font-mono uppercase">Project</span>
-                        <select 
-                          className="bg-surface/50 border border-border rounded-lg px-2 py-1 text-white text-xs outline-none focus:border-primary/50 text-right appearance-none cursor-pointer hover:bg-surface transition-colors"
-                          value={parsedResult.projectId || "NEW"}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === "NEW") {
-                              setParsedResult({ ...parsedResult, projectId: undefined });
-                            } else if (val === "NONE") {
-                              setParsedResult({ ...parsedResult, projectId: undefined, project: "None" });
-                            } else {
-                              const p = (projects as any[]).find(proj => proj.id === val);
-                              setParsedResult({ ...parsedResult, projectId: val, project: p?.name || "" });
-                            }
-                          }}
-                        >
-                          {projects.map((p: any) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                          <option value="NEW">+ New: {parsedResult.projectId ? "Create New" : parsedResult.project}</option>
-                          <option value="NONE">None (Inbox)</option>
-                        </select>
-                      </div>
-                      {!parsedResult.projectId && parsedResult.project !== "None" && (
-                         <input 
-                          type="text"
-                          className="w-full bg-zinc-900/50 border border-dashed border-zinc-800 rounded-lg px-3 py-1.5 text-zinc-400 text-[10px] mt-1 outline-none focus:border-primary/30"
-                          value={parsedResult.project}
-                          onChange={(e) => setParsedResult({ ...parsedResult, project: e.target.value })}
-                          placeholder="Project name..."
-                         />
-                      )}
-                      <div className="h-px bg-border/50" />
-                      <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 text-[10px] font-mono uppercase">Duration</span>
-                        <span className="text-zinc-200 text-xs font-mono">{parsedResult.duration}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setParsedResult(null)}
-                      disabled={isSaving}
-                      className="flex-1 border border-border text-zinc-400 h-10 rounded-xl text-[10px] font-mono uppercase hover:text-white transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Edit2 size={12} /> Refine
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        if (isSaving) return;
-                        handleConfirm();
-                      }}
-                      disabled={isSaving}
-                      className="flex-1 bg-primary text-void h-10 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_15px_rgba(99,102,241,0.2)]"
-                    >
-                      {isSaving ? (
-                        <div className="w-3 h-3 border-2 border-void border-t-transparent animate-spin rounded-full" />
-                      ) : (
-                        <>Affirm <Check size={14} /></>
-                      )}
-                    </motion.button>
                   </div>
                 </motion.div>
               )}
