@@ -16,6 +16,7 @@ export interface Task {
   description?: string;
   subtasksCount?: number;
   completedSubtasksCount?: number;
+  waitingUntil?: Date | null;
 }
 
 export type SessionMode = 'Deep Work' | 'Low Energy' | 'Creative' | 'Admin';
@@ -80,7 +81,8 @@ export function mapTaskData(t: any): Task {
     state: t.state || 'Active',
     description: t.description || "",
     subtasksCount: t.subtasks?.length || 0,
-    completedSubtasksCount: t.subtasks?.filter((st: any) => st.is_completed).length || 0
+    completedSubtasksCount: t.subtasks?.filter((st: any) => st.is_completed).length || 0,
+    waitingUntil: t.waiting_until ? new Date(t.waiting_until) : null
   };
 }
 

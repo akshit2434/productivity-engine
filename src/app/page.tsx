@@ -30,11 +30,12 @@ export default function Home() {
         .from('tasks')
         .select(`
           id, title, description, project_id, due_date, est_duration_minutes, energy_tag,
-          last_touched_at, recurrence_interval_days,
+          last_touched_at, recurrence_interval_days, waiting_until,
           projects(name, tier, decay_threshold_days),
           subtasks(is_completed)
         `)
-        .eq('state', 'Active');
+        .eq('state', 'Active')
+        .or(`waiting_until.is.null,waiting_until.lte.${new Date().toISOString()}`);
       return (data || []).map(mapTaskData);
     },
     staleTime: 1000 * 60 * 5, // Keep fresh for 5 mins

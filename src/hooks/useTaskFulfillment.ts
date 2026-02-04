@@ -45,6 +45,9 @@ export function useTaskFulfillment() {
 
     // 4. Handle Smart Recurrence
     if (task.recurrenceIntervalDays) {
+      const nextRunDate = new Date();
+      nextRunDate.setDate(nextRunDate.getDate() + task.recurrenceIntervalDays);
+      
       await supabase.from("tasks").insert({
         title: task.title,
         project_id: task.projectId,
@@ -52,6 +55,7 @@ export function useTaskFulfillment() {
         energy_tag: task.energyTag || "Shallow",
         state: "Active",
         recurrence_interval_days: task.recurrenceIntervalDays,
+        waiting_until: nextRunDate.toISOString()
       });
     }
 

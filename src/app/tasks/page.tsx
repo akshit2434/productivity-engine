@@ -38,6 +38,7 @@ export default function TasksPage() {
           recurrence_interval_days,
           last_touched_at,
           created_at,
+          waiting_until,
           projects(name, tier, decay_threshold_days),
           subtasks(is_completed)
         `)
