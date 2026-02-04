@@ -65,3 +65,18 @@ export interface Message {
   tool_calls?: any;
   created_at: string;
 }
+
+export interface Note {
+  id: string;
+  user_id?: string;
+  project_id?: string | null;
+  task_id?: string | null;
+  title: string;
+  content?: string;
+  created_at: string;
+  updated_at: string;
+  projects?: {
+    name: string;
+    color: string;
+  };
+}

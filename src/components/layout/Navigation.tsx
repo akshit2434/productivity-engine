@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, List, FolderOpen, BarChart3, LogOut, Sparkles } from "lucide-react";
+import { Home, List, FolderOpen, BarChart3, LogOut, Sparkles, Book } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
   { label: "Focus", href: "/", icon: Home },
+  { label: "Notes", href: "/notes", icon: Book },
   { label: "History", href: "/history", icon: List },
   { label: "Projects", href: "/portfolio", icon: FolderOpen },
   { label: "Analytics", href: "/review", icon: BarChart3 },
@@ -41,6 +42,14 @@ export function Navigation() {
             ...t,
             project_name: t.projects?.name || 'Inbox'
           }));
+        }
+      });
+    } else if (href === "/notes") {
+      queryClient.prefetchQuery({
+        queryKey: ['notes'],
+        queryFn: async () => {
+          const { data } = await supabase.from('notes').select('*, projects(name, color)').order('updated_at', { ascending: false });
+          return data || [];
         }
       });
     } else if (href === "/portfolio") {

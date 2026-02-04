@@ -31,6 +31,12 @@ The home screen is a **Syllabus**—a curated list of what to execute *next*, ca
 - **Deadlines:** Integrated "Mission Critical" logic for tasks due within 24h.
 - **Zero-Delay Sync:** Powered by Supabase Realtime & TanStack Query for instant feedback.
 
+#### Strategy Logs (Knowledge Base)
+A dedicated secure archive for strategic dumps, meeting notes, and project brainstorming.
+- **Markdown-First:** Full rich-text editing with a distraction-free interface.
+- **AI Refinement:** "Refine" button to restructure brain dumps into clean, actionable intelligence.
+- **Context Awareness:** Notes can be linked directly to Projects and Tasks for contextual retrieval.
+
 ---
 
 ## 2. Technical Architecture

@@ -28,6 +28,8 @@ import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getProjectColor } from "@/lib/colors";
+import { formatDistanceToNow } from "date-fns";
+import { NoteEditor } from "@/components/notes/NoteEditor";
 
 interface TaskDetailModalProps {
   task: Task;
@@ -38,7 +40,7 @@ interface TaskDetailModalProps {
 export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"notes" | "subtasks">("notes");
+  const [activeTab, setActiveTab] = useState<"notes" | "subtasks" | "strategize">("notes");
   const [newSubtask, setNewSubtask] = useState("");
   const [newNote, setNewNote] = useState("");
   const { isRecording, startRecording, stopRecording, audioBlob } = useAudioRecorder();
@@ -148,6 +150,42 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["tasks", task.id, "subtasks"] }),
   });
+
+  const { data: linkedNotes = [], isLoading: isLoadingNotes } = useQuery({
+    queryKey: ["tasks", task.id, "notes"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("task_id", task.id)
+        .order("updated_at", { ascending: false });
+      return (data || []) as any[];
+    },
+    enabled: isOpen && activeTab === "strategize",
+  });
+
+  const createNoteMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await supabase
+        .from("notes")
+        .insert({
+          title: `Strategy for ${task.title}`,
+          content: "",
+          task_id: task.id,
+          project_id: task.projectId,
+        })
+        .select()
+        .single();
+      return data;
+    },
+    onSuccess: (newNote) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", task.id, "notes"] });
+      setSelectedNote(newNote);
+    },
+  });
+
+  const [selectedNote, setSelectedNote] = useState<any | null>(null);
+
 
   const inputRef = useRef<HTMLInputElement>(null);
   const lastTaskId = useRef<string>(task.id);
@@ -489,6 +527,16 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
               Structural Fragments {subtasks.length > 0 && `(${subtasks.length})`}
               {activeTab === "subtasks" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: projectColor }} />}
             </button>
+            <button 
+              onClick={() => setActiveTab("strategize")}
+              className={cn(
+                "px-6 py-4 text-xs font-bold uppercase tracking-widest transition-all relative",
+                activeTab === "strategize" ? "text-primary" : "text-zinc-600 hover:text-zinc-400"
+              )}
+            >
+              Intelligence Logs {linkedNotes.length > 0 && `(${linkedNotes.length})`}
+              {activeTab === "strategize" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: projectColor }} />}
+            </button>
           </div>
 
           {/* Content Area */}
@@ -582,7 +630,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                     </button>
                 </div>
               </div>
-            ) : (
+            ) : activeTab === "subtasks" ? (
               <div className="space-y-6">
                 {/* Add Subtask Input */}
                 <div className="flex gap-3">
@@ -672,10 +720,78 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                   )}
                 </div>
               </div>
+            ) : (
+                <div className="space-y-6">
+                    <button 
+                        onClick={() => createNoteMutation.mutate()}
+                        disabled={createNoteMutation.isPending}
+                        className="w-full h-14 bg-primary/10 border border-dashed border-primary/30 rounded-2xl flex items-center justify-center gap-3 text-primary hover:bg-primary/20 transition-all group"
+                    >
+                        {createNoteMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Initalize Intelligence Log</span>
+                    </button>
+
+                    <div className="space-y-3">
+                        {linkedNotes.map((note) => (
+                            <div 
+                                key={note.id} 
+                                onClick={() => setSelectedNote(note)}
+                                className="group bg-surface-lighter border border-border/10 rounded-2xl p-4 hover:border-border/30 transition-all card-shadow cursor-pointer flex items-center justify-between"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary/50 group-hover:text-primary transition-colors">
+                                        <Sparkles size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-zinc-200 line-clamp-1">{note.title}</p>
+                                        <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
+                                            {formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}
+                                        </p>
+                                    </div>
+                                </div>
+                                <ChevronRight size={16} className="text-zinc-700 group-hover:text-primary transition-all" />
+                            </div>
+                        ))}
+                        {linkedNotes.length === 0 && !isLoadingNotes && (
+                            <div className="py-12 text-center text-zinc-700 text-[10px] font-bold uppercase tracking-[0.2em] italic">
+                                Tactical archive vacant - no logs detected
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
           </div>
         </div>
       </motion.div>
+
+      {/* Linked Note Editor Overlay */}
+      <AnimatePresence>
+        {selectedNote && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-void/90 backdrop-blur-xl"
+              onClick={() => setSelectedNote(null)}
+            />
+            <motion.div 
+              initial={{ scale: 0.98, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.98, opacity: 0, y: 10 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full h-full"
+            >
+              <NoteEditor 
+                note={selectedNote} 
+                onClose={() => setSelectedNote(null)} 
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+
     </div>
   );
 }

@@ -14,6 +14,7 @@
 2. **Portfolio (Boats)** – High-level project health tracking (Implemented).
 3. **The Prophet (Chat)** – "God Mode" AI Assistant (Implemented).
 4. **Task Detail** – Enrichment with notes and subtasks (Implemented).
+5. **Strategy Logs (Notes)** – Standalone AI-enhanced knowledge base (Implemented).
 
 ---
 
