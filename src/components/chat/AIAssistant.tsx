@@ -163,8 +163,15 @@ export function AIAssistant() {
                               }
 
                               if (toolName === 'generate_chart') {
-                                if (toolPart.state === 'output-available' || toolPart.state === 'result') {
-                                  const result = toolPart.output || toolPart.result;
+                                if (toolPart.state === 'output-available' || toolPart.state === 'result' || part.type === 'tool-result') {
+                                  const result = (toolPart.output || toolPart.result) as { 
+                                    chartType: 'bar' | 'line' | 'pie' | 'area';
+                                    title: string;
+                                    data: any[];
+                                    xAxisKey?: string;
+                                    yAxisKey?: string;
+                                    dataKeys: string[];
+                                  };
                                   return (
                                     <AIChart 
                                       key={index}
