@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText, stepCountIs } from 'ai';
+import { streamText, stepCountIs, embed } from 'ai';
 import { createClient } from '@/lib/supabaseServer';
 import { z } from 'zod';
 import { calculateUrgencyScore, mapTaskData, SessionMode } from '@/lib/engine';
@@ -278,9 +278,80 @@ export async function POST(req: Request) {
     }
   }
 
+
   const google = createGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY,
   });
+
+  // --- Memory Retrieval (RAG) ---
+  let retrievedContext = "";
+  try {
+    console.log(`[Prophet API] RAG: Starting memory retrieval...`);
+    const lastUserMessage = messages.findLast((m: any) => m.role === 'user');
+    
+    // Extract text from content (string), content (array), or parts (Vercel AI SDK format)
+    let queryText = "";
+    if (typeof lastUserMessage?.content === 'string') {
+      queryText = lastUserMessage.content;
+    } else if (Array.isArray(lastUserMessage?.content)) {
+      queryText = lastUserMessage.content.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
+    } else if (Array.isArray(lastUserMessage?.parts)) {
+      queryText = lastUserMessage.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
+    }
+
+    console.log(`[Prophet API] RAG: Query text = "${queryText.substring(0, 100)}"`);
+
+    if (queryText) {
+      const { embedding } = await embed({
+        model: google.textEmbeddingModel('text-embedding-004'),
+        value: queryText,
+      });
+      console.log(`[Prophet API] RAG: Generated embedding (length: ${embedding?.length})`);
+
+      // 1. Vector Search for General Memories
+      // Note: This requires the match_memories RPC to be defined in Supabase
+      const { data: generalMemories, error: rpcError } = await supabase.rpc('match_memories', {
+        query_embedding: embedding,
+        match_threshold: 0.3, // Lowered from 0.5 for better recall with Gemini
+        match_count: 5,
+      });
+
+      if (rpcError) {
+        console.error(`[Prophet API] RAG: match_memories RPC error:`, rpcError);
+      } else {
+        console.log(`[Prophet API] RAG: Found ${generalMemories?.length || 0} general memories`);
+      }
+
+      // 2. Fetch all Directives
+      const { data: directives, error: directivesError } = await supabase
+        .from('memories')
+        .select('content')
+        .eq('type', 'directive');
+
+      if (directivesError) {
+        console.error(`[Prophet API] RAG: Directives query error:`, directivesError);
+      } else {
+        console.log(`[Prophet API] RAG: Found ${directives?.length || 0} directives`);
+      }
+
+      if (generalMemories?.length || directives?.length) {
+        retrievedContext = "\n\n### RETRIEVED MEMORIES & DIRECTIVES\n";
+        if (directives?.length) {
+          retrievedContext += "Directives (User Preferences):\n" + directives.map((m: any) => `- ${m.content}`).join('\n') + "\n";
+        }
+        if (generalMemories?.length) {
+          retrievedContext += "Contextual Memories:\n" + generalMemories.map((m: any) => `- ${m.content}`).join('\n') + "\n";
+        }
+        console.log(`[Prophet API] RAG: Injected ${directives?.length || 0} directives and ${generalMemories?.length || 0} general memories.`);
+      } else {
+        console.log(`[Prophet API] RAG: No matching memories or directives found.`);
+      }
+    } else {
+      console.log(`[Prophet API] RAG: No query text found, skipping retrieval.`);
+    }
+  } catch (ragError) {
+    console.error("[Prophet API] RAG Error:", ragError);
+  }
 
   try {
     const result = streamText({
@@ -301,6 +372,12 @@ export async function POST(req: Request) {
         - Voice Mastery: You can "listen" to audio inputs if they are provided. If you receive an audio part, analyze it as if it were a direct spoken command or brain dump.
         - Syllabus Awareness: You have access to the mathematical urgency scores of all tasks. Use 'get_syllabus' to give the user precise advice on what to execute next based on their available time and energy mode.
         - Health Orchestration: When a user completes a task via you, use 'complete_task'. This not only marks it done but also rejuvenates their "Boat" (Project) by updating its health metrics.
+
+        MEMORY & CONTEXT (PHASE 1):
+        - Long-term Memory: When a user states a preference or rule, save it as a "Directive" via 'save_memory'. This will be recalled in future sessions.
+        - Project Context: Each project can have a "Context Card" (markdown). Before answering deep questions about a project, use 'get_context_card'. If the user provides a major update about a project's goal, use 'update_context_card'.
+        - IMPORTANT: If context is provided below in "RETRIEVED MEMORIES", you MUST use it to personalize your response. If the information isn't there, you can state you don't know yet, but NEVER say you "don't have access" to the capability itself.
+        ${retrievedContext}
 
         CORE PHILOSOPHY:
         - High-Performance Minimalism: We value speed, clarity, and visual elegance (Slate/Charcoal/Glassmorphism).
@@ -686,8 +763,8 @@ export async function POST(req: Request) {
               const [updateTask, updateProject, logActivity] = await Promise.all([
                 // Mark task done and update its last_touched_at
                 supabase.from('tasks').update({ 
-                  state: 'Done', 
-                  last_touched_at: new Date().toISOString() 
+                   state: 'Done', 
+                   last_touched_at: new Date().toISOString() 
                 }).eq('id', taskId),
                 
                 // Rejuvenate project
@@ -723,6 +800,176 @@ export async function POST(req: Request) {
             }
           },
         },
+        save_memory: {
+          description: 'Save a core preference, fact, or instruction for long-term recall. Deduplicates automatically.',
+          inputSchema: z.object({
+            content: z.string().describe('The fact or preference to remember'),
+            type: z.enum(['general', 'directive']).default('general').describe('Directives are rules/preferences, general are just facts'),
+          }),
+          execute: async ({ content, type }) => {
+            try {
+              console.log(`[Prophet API] >> EXECUTE save_memory:`, { type });
+              
+              // Generate embedding for the memory
+              const { embedding } = await embed({
+                model: google.textEmbeddingModel('text-embedding-004'),
+                value: content,
+              });
+
+              // Deduplication: Check if a very similar memory exists (cosine > 0.85)
+              const { data: similar } = await supabase.rpc('match_memories', {
+                query_embedding: embedding,
+                match_threshold: 0.85,
+                match_count: 1,
+              });
+
+              if (similar && similar.length > 0) {
+                console.log(`[Prophet API] save_memory: Duplicate detected (similarity: ${similar[0].similarity})`);
+                // Update existing memory instead of creating a duplicate
+                const { data, error } = await supabase.from('memories').update({
+                  content,
+                  type,
+                  embedding,
+                  updated_at: new Date().toISOString()
+                }).eq('id', similar[0].id).select().single();
+                
+                if (error) throw error;
+                return { success: true, action: 'updated', memory: data };
+              }
+
+              // No duplicate, insert new
+              const { data, error } = await supabase.from('memories').insert({
+                content,
+                type,
+                embedding
+              }).select().single();
+
+              if (error) throw error;
+              return { success: true, action: 'created', memory: data };
+            } catch (e: any) {
+              console.error(`[Prophet API] save_memory error:`, e);
+              return { error: e.message };
+            }
+          }
+        },
+        update_memory: {
+          description: 'Update an existing memory. Only use when user explicitly asks to correct or change a saved preference.',
+          inputSchema: z.object({
+            memoryId: z.string().uuid().describe('The UUID of the memory to update'),
+            content: z.string().describe('The new content for the memory'),
+            type: z.enum(['general', 'directive']).optional(),
+          }),
+          execute: async ({ memoryId, content, type }) => {
+            try {
+              console.log(`[Prophet API] >> EXECUTE update_memory:`, memoryId);
+              
+              // Generate new embedding
+              const { embedding } = await embed({
+                model: google.textEmbeddingModel('text-embedding-004'),
+                value: content,
+              });
+
+              const updates: any = { content, embedding, updated_at: new Date().toISOString() };
+              if (type) updates.type = type;
+
+              const { data, error } = await supabase.from('memories')
+                .update(updates)
+                .eq('id', memoryId)
+                .select()
+                .single();
+              
+              if (error) throw error;
+              return { success: true, memory: data };
+            } catch (e: any) {
+              console.error(`[Prophet API] update_memory error:`, e);
+              return { error: e.message };
+            }
+          }
+        },
+        delete_memory: {
+          description: 'Delete a memory. Only use when user explicitly asks to forget something.',
+          inputSchema: z.object({
+            memoryId: z.string().uuid().describe('The UUID of the memory to delete'),
+          }),
+          execute: async ({ memoryId }) => {
+            try {
+              console.log(`[Prophet API] >> EXECUTE delete_memory:`, memoryId);
+              const { error } = await supabase.from('memories').delete().eq('id', memoryId);
+              if (error) throw error;
+              return { success: true };
+            } catch (e: any) {
+              console.error(`[Prophet API] delete_memory error:`, e);
+              return { error: e.message };
+            }
+          }
+        },
+        list_memories: {
+          description: 'List all stored memories. Use this to show the user what you remember or to find a memory ID for update/delete.',
+          inputSchema: z.object({
+            type: z.enum(['general', 'directive', 'all']).default('all'),
+            limit: z.number().default(20),
+          }),
+          execute: async ({ type, limit }) => {
+            try {
+              console.log(`[Prophet API] >> EXECUTE list_memories:`, { type });
+              let query = supabase.from('memories').select('id, content, type, created_at').order('created_at', { ascending: false }).limit(limit);
+              if (type !== 'all') {
+                query = query.eq('type', type);
+              }
+              const { data, error } = await query;
+              if (error) throw error;
+              return data;
+            } catch (e: any) {
+              console.error(`[Prophet API] list_memories error:`, e);
+              return { error: e.message };
+            }
+          }
+        },
+        get_context_card: {
+          description: 'Fetch the high-level markdown context/summary for a project.',
+          inputSchema: z.object({
+            projectId: z.string().uuid(),
+          }),
+          execute: async ({ projectId }) => {
+            try {
+              console.log(`[Prophet API] >> EXECUTE get_context_card:`, projectId);
+              const { data, error } = await supabase
+                .from('context_cards')
+                .select('*')
+                .eq('project_id', projectId)
+                .single();
+              
+              if (error && error.code !== 'PGRST116') throw error;
+              return data || { content: "No context card defined for this project." };
+            } catch (e: any) {
+              console.error(`[Prophet API] get_context_card error:`, e);
+              return { error: e.message };
+            }
+          }
+        },
+        update_context_card: {
+          description: 'Update the markdown context/summary for a project.',
+          inputSchema: z.object({
+            projectId: z.string().uuid(),
+            content: z.string().describe('Markdown content for the context card'),
+          }),
+          execute: async ({ projectId, content }) => {
+            try {
+              console.log(`[Prophet API] >> EXECUTE update_context_card:`, projectId);
+              const { data, error } = await supabase
+                .from('context_cards')
+                .upsert({ project_id: projectId, content, updated_at: new Date().toISOString() })
+                .select()
+                .single();
+              
+              if (error) throw error;
+              return { success: true, card: data };
+            } catch (e: any) {
+              console.error(`[Prophet API] update_context_card error:`, e);
+              return { error: e.message };
+            }
+          }
+        }
       },
       onFinish: async ({ response }) => {
         // Save assistant response to Supabase if sessionId is provided
@@ -756,9 +1003,13 @@ export async function POST(req: Request) {
                   }
                 }
 
+                // Sanitize role for DB constraint if not updated yet
+                const allowedRoles = ['user', 'assistant', 'system', 'tool', 'data'];
+                const dbRole = allowedRoles.includes(msg.role) ? msg.role : 'assistant';
+
                 const { error } = await supabase.from('chat_messages').insert({
                   session_id: sessionId,
-                  role: msg.role,
+                  role: dbRole,
                   content: textContent || '',
                   parts: msg.content
                 });

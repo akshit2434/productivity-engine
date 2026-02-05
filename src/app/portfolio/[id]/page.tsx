@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Anchor, Settings2, Trash2 } from "lucide-react";
+import { Anchor, Settings2, Trash2, Edit3, Save, X, Brain } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 import { FocusCard } from "@/components/ui/FocusCard";
 import { KPIManager } from "@/components/portfolio/KPIManager";
 import { useProjectAnalytics } from "@/hooks/useProjectAnalytics";
-import { Clock, TrendingUp, Zap, Brain, ArrowLeft } from "lucide-react";
+import { Clock, TrendingUp, Zap, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useTaskFulfillment } from "@/hooks/useTaskFulfillment";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
@@ -46,6 +47,8 @@ export default function ProjectDetailPage() {
       enabledMetrics: ["weekly_intensity", "7d_velocity", "focus_consistency", "deep_work_ratio"]
     }
   });
+  const [isEditingContext, setIsEditingContext] = useState(false);
+  const [contextInput, setContextInput] = useState("");
   const [activeTab, setActiveTab] = useState<"Active" | "Waiting" | "History">("Active");
   const { metrics, isLoading: isAnalyticsLoading } = useProjectAnalytics(id as string);
   const { completeTask } = useTaskFulfillment();
@@ -65,7 +68,22 @@ export default function ProjectDetailPage() {
     enabled: !!id
   });
 
-  // 2. Fetch Project Tasks Query
+  // 2. Fetch Context Card Query
+  const { data: contextCard } = useQuery({
+    queryKey: ['context_cards', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('context_cards')
+        .select('*')
+        .eq('project_id', id)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+    enabled: !!id
+  });
+
+  // 3. Fetch Project Tasks Query
   const { data: tasks = [], isLoading: isTasksLoading } = useQuery<Task[]>({
     queryKey: ['tasks', 'project', id],
     queryFn: async () => {
@@ -91,9 +109,12 @@ export default function ProjectDetailPage() {
         } as any
       });
     }
-  }, [project]);
+    if (contextCard) {
+      setContextInput(contextCard.content);
+    }
+  }, [project, contextCard]);
 
-  // 3. Mutations
+  // 4. Mutations
   const undoMutation = useMutation<void, Error, string>({
     mutationFn: async (taskId) => {
       await supabase
@@ -187,6 +208,23 @@ export default function ProjectDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       router.push('/portfolio');
+    }
+  });
+
+  const updateContextMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const { error } = await supabase
+        .from('context_cards')
+        .upsert({ 
+          project_id: id as string, 
+          content, 
+          updated_at: new Date().toISOString() 
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['context_cards', id] });
+      setIsEditingContext(false);
     }
   });
 
@@ -435,8 +473,70 @@ export default function ProjectDetailPage() {
           )}
         </div>
 
-        {/* Right Column: Key Results & Backlog */}
+        {/* Right Column: Context & Execution */}
         <div className="md:col-span-7 lg:col-span-12 xl:col-span-8 space-y-10">
+          
+          {/* Project Context Card */}
+          <section className="bg-surface border border-border/30 rounded-3xl p-8 card-shadow relative overflow-hidden group">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary" style={{ backgroundColor: hexToRgba(projectColor, 0.1), color: projectColor }}>
+                  <Brain size={20} />
+                </div>
+                <div>
+                  <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Cognitive Context</h3>
+                  <p className="text-[10px] text-zinc-600 font-medium">The Prophet uses this to understand project goals.</p>
+                </div>
+              </div>
+              {!isEditingContext ? (
+                <button 
+                  onClick={() => setIsEditingContext(true)}
+                  className="p-2 text-zinc-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <Edit3 size={16} />
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                       setIsEditingContext(false);
+                       setContextInput(contextCard?.content || "");
+                    }}
+                    className="p-2 text-rose-500 hover:text-rose-400 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                  <button 
+                    onClick={() => updateContextMutation.mutate(contextInput)}
+                    className="p-2 text-emerald-500 hover:text-emerald-400 transition-colors"
+                    disabled={updateContextMutation.isPending}
+                  >
+                    <Save size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="min-h-[100px] prose prose-invert prose-xs max-w-none">
+              {isEditingContext ? (
+                <textarea
+                  className="w-full h-40 bg-void/50 border border-border/50 rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all font-medium text-zinc-300 resize-none"
+                  value={contextInput}
+                  onChange={(e) => setContextInput(e.target.value)}
+                  placeholder="Describe the high-level goals, stakeholders, and technical constraints of this boat..."
+                />
+              ) : (
+                <div className="text-zinc-400 text-sm leading-relaxed">
+                  {contextCard?.content ? (
+                    <ReactMarkdown>{contextCard.content}</ReactMarkdown>
+                  ) : (
+                    <p className="italic text-zinc-600">No context provided. The Prophet is operating in the dark. Add some goals to improve intelligence.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
           <KPIManager projectId={project.id} />
 
           <section>
