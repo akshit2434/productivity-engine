@@ -11,16 +11,17 @@ import QueryProvider from "@/providers/QueryProvider";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isChat = pathname === '/chat';
+  const isChat = pathname === "/chat";
+  const isExport = pathname?.startsWith("/export");
 
   return (
     <QueryProvider>
       <SplashScreen />
-      <main className={cn("min-h-screen", !isChat && "pb-24")}>
+      <main className={cn("min-h-screen", !isChat && !isExport && "pb-24")}>
         {children}
       </main>
-      {!isChat && <QuickCaptureFAB />}
-      <Navigation />
+      {!isChat && !isExport && <QuickCaptureFAB />}
+      {!isChat && !isExport && <Navigation />}
     </QueryProvider>
   );
 }

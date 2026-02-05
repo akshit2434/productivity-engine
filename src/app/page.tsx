@@ -6,7 +6,7 @@ import { ModeSelector } from "@/components/layout/ModeSelector";
 import { TimeAvailableSelector } from "@/components/layout/TimeAvailableSelector";
 import { useUserStore } from "@/store/userStore";
 import { useTaskFulfillment } from "@/hooks/useTaskFulfillment";
-import { CheckCircle2, Clock, Sparkles } from "lucide-react";
+import { CheckCircle2, Share2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase";
@@ -155,16 +155,13 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex gap-4">
-             <Link 
-               href="/chat"
-               className="h-10 px-4 md:h-16 md:px-8 rounded-2xl md:rounded-[2rem] bg-primary text-void flex items-center gap-3 card-shadow hover:opacity-90 transition-all font-black text-[10px] md:text-xs tracking-[0.2em]"
-             >
-               <Sparkles size={18} strokeWidth={2.5} />
-               <span>ASK AI</span>
-             </Link>
-             <div className="w-10 h-10 md:w-16 md:h-16 rounded-2xl md:rounded-[2rem] bg-surface border border-border/50 flex items-center justify-center text-zinc-400 card-shadow">
-               <Clock className="md:w-7 md:h-7" size={18} />
-             </div>
+            <Link
+              href="/export"
+              className="h-10 px-4 md:h-16 md:px-8 rounded-2xl md:rounded-[2rem] bg-primary text-void flex items-center gap-3 card-shadow hover:opacity-90 transition-all font-black text-[10px] md:text-xs tracking-[0.2em]"
+            >
+              <Share2 size={18} strokeWidth={2.5} />
+              <span>EXPORT</span>
+            </Link>
           </div>
         </div>
       </header>
