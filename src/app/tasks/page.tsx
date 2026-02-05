@@ -148,6 +148,7 @@ export default function TasksPage() {
 
   const handleDelete = (id: string) => {
     if (deleteMutation.isPending) return;
+    if (!confirm("Delete this task?")) return;
     deleteMutation.mutate(id);
   };
   const handleComplete = (task: any) => {

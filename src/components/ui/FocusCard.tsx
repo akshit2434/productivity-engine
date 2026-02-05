@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { cn, formatTimeRemaining } from "@/lib/utils";
 import { hexToRgba } from "@/lib/colors";
 import { RotateCcw, Trash2, Check, Maximize2, AlertCircle } from "lucide-react";
@@ -45,6 +45,7 @@ export function FocusCard({
 }: FocusCardProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const x = useMotionValue(0);
+  const [isDragging, setIsDragging] = useState(false);
   
   // Transform values for swipe feedback
   const background = useTransform(
@@ -59,10 +60,14 @@ export function FocusCard({
   const scaleLeft = useTransform(x, [-100, -50], [1.2, 0.8]);
 
   const handleDragEnd = (_: any, info: any) => {
+    setIsDragging(false);
     if (info.offset.x > 100 && onComplete) {
       onComplete();
     } else if (info.offset.x < -100 && onDelete) {
       onDelete();
+    } else {
+      // Snap back to neutral to avoid partially-swiped cards lingering.
+      x.set(0);
     }
   };
 
@@ -186,10 +191,15 @@ export function FocusCard({
       <motion.div
         drag={isMobile ? "x" : false}
         dragConstraints={{ left: -120, right: 120 }}
+        dragElastic={0.15}
+        dragMomentum={false}
+        dragSnapToOrigin
+        onDragStart={() => setIsDragging(true)}
         onDragEnd={handleDragEnd}
         onClick={() => onClick?.()}
         className={cn(
-          "relative bg-surface border rounded-2xl p-5 transition-all duration-300 card-shadow cursor-pointer z-10 touch-pan-y",
+          "relative bg-surface border rounded-2xl p-5 card-shadow cursor-pointer z-10 touch-pan-y will-change-transform",
+          isDragging ? "transition-none" : "transition-all duration-300",
           isActive ? "bg-surface/90 border-transparent shadow-[0_0_30px_-10px_rgba(0,0,0,0.5)]" : "border-transparent hover:border-border/50",
           !isMobile && "group-hover:border-border/30"
         )}
