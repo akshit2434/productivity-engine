@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Send, Sparkles, Check, Edit2, Mic, Square, Zap, FileText } from "lucide-react";
+import { X, Send, Sparkles, Check, Edit2, Mic, Square, Zap, FileText, MessageCircle } from "lucide-react";
 import { cn, parseDuration } from "@/lib/utils";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceVisualizer } from "./VoiceVisualizer";
@@ -15,8 +15,11 @@ interface QuickCaptureDrawerProps {
 }
 
 export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps) {
+  // Capture modes: 'task' (AI or Manual), 'thought' (silent dump to notes)
+  const [captureMode, setCaptureMode] = useState<'task' | 'thought'>('task');
   const [isAiEnabled, setIsAiEnabled] = useState(false);
   const [input, setInput] = useState("");
+  const [thoughtInput, setThoughtInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Manual Form State
@@ -128,6 +131,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
 
   const resetState = () => {
     setInput("");
+    setThoughtInput("");
     setManualData({
       title: "",
       projectId: "NONE",
@@ -137,6 +141,25 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       dueDate: ""
     });
   };
+
+  // 3. Add Thought Mutation (Silent Dump)
+  const addThoughtMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const { error } = await supabase.from('notes').insert({
+        title: 'Quick Thought',
+        content,
+        type: 'thought',
+        is_read: false
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: ['unread_thoughts'] });
+      onClose();
+      resetState();
+    }
+  });
 
   const { isRecording, startRecording, stopRecording, analyser, audioBlob } = useVoiceRecorder();
 
@@ -239,22 +262,37 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xs font-mono uppercase tracking-widest text-primary flex items-center gap-2">
-                {isAiEnabled ? <Sparkles size={14} /> : <Zap size={14} />} 
-                {isAiEnabled ? "AI Quick Capture" : "Manual Task"}
+                {captureMode === 'thought' ? <MessageCircle size={14} /> : isAiEnabled ? <Sparkles size={14} /> : <Zap size={14} />} 
+                {captureMode === 'thought' ? "Quick Thought" : isAiEnabled ? "AI Quick Capture" : "Manual Task"}
               </h2>
               <div className="flex items-center gap-3">
+                {/* Mode Toggle: Task vs Thought */}
                 <button 
-                  onClick={() => setIsAiEnabled(!isAiEnabled)}
+                  onClick={() => setCaptureMode(captureMode === 'task' ? 'thought' : 'task')}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-tight transition-all",
-                    isAiEnabled 
-                      ? "bg-primary text-void shadow-[0_0_15px_rgba(99,102,241,0.3)]" 
-                      : "bg-void border border-border text-zinc-500 hover:text-primary hover:border-primary/30"
+                    captureMode === 'thought'
+                      ? "bg-amber-500 text-void shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                      : "bg-void border border-border text-zinc-500 hover:text-amber-400 hover:border-amber-500/30"
                   )}
                 >
-                  {isAiEnabled ? <Zap size={10} fill="currentColor" /> : <Sparkles size={10} />}
-                  {isAiEnabled ? "AI Mode" : "Manual"}
+                  <MessageCircle size={10} />
+                  Thought
                 </button>
+                {captureMode === 'task' && (
+                  <button 
+                    onClick={() => setIsAiEnabled(!isAiEnabled)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-tight transition-all",
+                      isAiEnabled 
+                        ? "bg-primary text-void shadow-[0_0_15px_rgba(99,102,241,0.3)]" 
+                        : "bg-void border border-border text-zinc-500 hover:text-primary hover:border-primary/30"
+                    )}
+                  >
+                    {isAiEnabled ? <Zap size={10} fill="currentColor" /> : <Sparkles size={10} />}
+                    {isAiEnabled ? "AI Mode" : "Manual"}
+                  </button>
+                )}
                 <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-1">
                   <X size={18} />
                 </button>
@@ -262,7 +300,36 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
             </div>
 
             <AnimatePresence mode="wait">
-              {!isAiEnabled ? (
+              {captureMode === 'thought' ? (
+                <motion.div
+                  key="thought-form"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="space-y-4"
+                >
+                  <textarea
+                    autoFocus
+                    className="w-full h-36 bg-void border border-amber-500/20 rounded-2xl p-5 font-medium text-sm focus:ring-1 focus:ring-amber-500 outline-none resize-none placeholder:text-zinc-800 transition-all"
+                    placeholder="Dump your thought here. No AI, no parsing. Just capture it."
+                    value={thoughtInput}
+                    onChange={(e) => setThoughtInput(e.target.value)}
+                  />
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => addThoughtMutation.mutate(thoughtInput)}
+                    disabled={!thoughtInput.trim() || addThoughtMutation.isPending}
+                    className="w-full bg-amber-500 text-void h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_20px_rgba(245,158,11,0.2)]"
+                  >
+                    {addThoughtMutation.isPending ? (
+                      <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
+                    ) : (
+                      <>Capture Thought <MessageCircle size={14} /></>
+                    )}
+                  </motion.button>
+                  <p className="text-[10px] text-zinc-600 text-center font-medium">This will appear in your Catch Up feed.</p>
+                </motion.div>
+              ) : !isAiEnabled ? (
                 <motion.div
                   key="manual-form"
                   initial={{ opacity: 0, scale: 0.98 }}

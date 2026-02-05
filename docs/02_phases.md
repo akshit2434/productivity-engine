@@ -22,16 +22,16 @@ Execution is divided into 5 testable phases. **USER MUST TEST AFTER EACH PHASE.*
 
 ---
 
-## Phase 2: Unstructured Dumps (The Feed)
+## Phase 2: Unstructured Dumps (The Feed) ✅
 **Goal:** "Fire and forget" thought dumps and the "Catch Up" loop.
 
 ### Tasks
-- [ ] **2.1 UI:** Upgrade Quick Capture Drawer with a "Thought Mode" (Silent Dump).
-- [ ] **2.2 Logic:** Thought Mode inserts directly into `notes` with `is_read = false`.
-- [ ] **2.3 UI:** Add "Sparkle" icon to the main Navigation header. It pulses if unread notes exist.
-- [ ] **2.4 UI:** Build the "Catch Up" Overlay to list unread thoughts/insights.
+- [x] **2.1 UI:** Upgrade Quick Capture Drawer with a "Thought Mode" (Silent Dump).
+- [x] **2.2 Logic:** Thought Mode inserts directly into `notes` with `is_read = false`.
+- [x] **2.3 UI:** Add "Sparkle" icon to the main Navigation header. It pulses if unread notes exist.
+- [x] **2.4 UI:** Build the "Catch Up" Overlay to list unread thoughts/insights.
 
-**TEST:** Send a voice message in Thought Mode. Ensure Sparkle pulses and note appears in Catch Up.
+**TESTED ✅:** User verified Thought Mode capture and Catch Up review flow.
 
 ---
 
