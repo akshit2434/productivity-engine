@@ -17,6 +17,7 @@ import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceVisualizer } from "@/components/ui/VoiceVisualizer";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import AIChart from '@/components/chat/AIChart';
+import AIWebSearchResults from '@/components/chat/AIWebSearchResults';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -469,18 +470,40 @@ function ChatInterface() {
                         }
                         if (part.type.startsWith('tool-')) {
                           const toolCallPart = part as { type: string, toolName?: string, state?: string, output?: unknown, result?: unknown };
-                          const toolName = toolCallPart.toolName || part.type.replace('tool-', '').replace('call', '').replace('-', ' ');
+                          const toolName = (toolCallPart.toolName || '')
+                            || part.type.replace('tool-', '').replace('call', '').replace('result', '').replace('-', ' ');
 
                           
                           if (part.type.includes('call') || toolCallPart.state === 'call') {
+                            const inputQuery = (toolCallPart as { input?: { query?: string }; args?: { query?: string } }).input?.query
+                              || (toolCallPart as { args?: { query?: string } }).args?.query
+                              || '';
+                            const preview = inputQuery ? inputQuery.slice(0, 42) + (inputQuery.length > 42 ? '…' : '') : '';
                             return (
-                              <div key={index} className="flex items-center gap-2 my-2 py-1 px-3 bg-white/5 rounded-lg border border-white/10 text-[10px] uppercase tracking-wider font-bold text-zinc-500">
+                              <div key={index} className="tool-pill inline-flex items-center gap-2 my-2 py-1.5 px-3 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-[0.25em] font-bold text-zinc-500 transition-all">
                                 <Loader2 size={10} className="animate-spin text-primary" />
-                                Executing {toolName || 'operation'}...
+                                {toolName === 'search web' || toolName === 'search_web' ? 'Scanning' : 'Running'}
+                                {preview ? <span className="normal-case tracking-normal text-zinc-400 font-medium">• {preview}</span> : null}
                               </div>
                             );
                           }
                           
+                          if (toolName === 'search web' || toolName === 'search_web') {
+                            if (toolCallPart.state === 'output-available' || toolCallPart.state === 'result' || part.type === 'tool-result') {
+                              const result = (toolCallPart.output || toolCallPart.result) as {
+                                provider: string;
+                                query: string;
+                                keywords?: string[];
+                                results: Array<{ id: number; title: string; url: string; source: string; snippet: string; publishedAt?: string }>;
+                              };
+                              return (
+                                <div key={index} className="my-6">
+                                  <AIWebSearchResults payload={result} />
+                                </div>
+                              );
+                            }
+                          }
+
                           if (toolName === 'generate chart' || toolName === 'generate_chart') {
                             if (toolCallPart.state === 'output-available' || toolCallPart.state === 'result' || part.type === 'tool-result') {
                               const result = (toolCallPart.output || toolCallPart.result) as {

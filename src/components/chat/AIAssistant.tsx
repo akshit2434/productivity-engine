@@ -7,6 +7,7 @@ import { Sparkles, Send, Bot, User, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import AIChart from './AIChart';
+import AIWebSearchResults from './AIWebSearchResults';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -137,11 +138,33 @@ export function AIAssistant() {
                             }
                             
                             if (part.type.startsWith('tool-')) {
-                              const toolName = part.type.replace('tool-', '');
-                              
+                              const toolPart = part as { type: string; toolName?: string; state?: string; output?: unknown; result?: unknown; input?: { query?: string }; args?: { query?: string } };
+                              const toolName = toolPart.toolName || part.type.replace('tool-', '').replace('call', '').replace('result', '');
+                               
+                              if (part.type.includes('call') || toolPart.state === 'call') {
+                                const inputQuery = toolPart.input?.query || toolPart.args?.query || '';
+                                const preview = inputQuery ? inputQuery.slice(0, 36) + (inputQuery.length > 36 ? '…' : '') : '';
+                                return (
+                                  <div key={index} className="tool-pill inline-flex items-center gap-2 my-2 py-1.5 px-3 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-[0.25em] font-bold text-zinc-500 transition-all">
+                                    <Loader2 size={10} className="animate-spin text-primary" />
+                                    {toolName === 'search_web' || toolName === 'search web' ? 'Scanning' : 'Running'}
+                                    {preview ? <span className="normal-case tracking-normal text-zinc-400 font-medium">• {preview}</span> : null}
+                                  </div>
+                                );
+                              }
+
+                              if (toolName === 'search_web' || toolName === 'search web') {
+                                if (toolPart.state === 'output-available' || toolPart.state === 'result' || part.type === 'tool-result') {
+                                  const result = toolPart.output || toolPart.result;
+                                  return (
+                                    <AIWebSearchResults key={index} payload={result as { provider: string; query: string; keywords?: string[]; results: Array<{ id: number; title: string; url: string; source: string; snippet: string; publishedAt?: string }> }} compact />
+                                  );
+                                }
+                              }
+
                               if (toolName === 'generate_chart') {
-                                if (part.state === 'output-available' || part.state === 'result') {
-                                  const result = part.output || part.result;
+                                if (toolPart.state === 'output-available' || toolPart.state === 'result') {
+                                  const result = toolPart.output || toolPart.result;
                                   return (
                                     <AIChart 
                                       key={index}

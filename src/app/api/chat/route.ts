@@ -3,6 +3,7 @@ import { streamText, stepCountIs, embed } from 'ai';
 import { createClient } from '@/lib/supabaseServer';
 import { z } from 'zod';
 import { calculateUrgencyScore, mapTaskData, SessionMode } from '@/lib/engine';
+import { searchWeb } from '@/lib/webSearch';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, unlink, readFile } from 'fs/promises';
@@ -379,6 +380,12 @@ export async function POST(req: Request) {
         - IMPORTANT: If context is provided below in "RETRIEVED MEMORIES", you MUST use it to personalize your response. If the information isn't there, you can state you don't know yet, but NEVER say you "don't have access" to the capability itself.
         ${retrievedContext}
 
+        WEB RESEARCH:
+        - When the user asks for up-to-date info, sources, comparisons, or "look it up", use the 'search_web' tool.
+        - Do NOT use inline bracket citations like [1]. The UI renders clickable source chips automatically.
+        - If you need to reference sources, use brief labels like "Source 1" or "Source 2".
+        - Provide concise synthesis first.
+
         CORE PHILOSOPHY:
         - High-Performance Minimalism: We value speed, clarity, and visual elegance (Slate/Charcoal/Glassmorphism).
         - Entropy: Tasks that haven't been touched decay. You are here to prevent that.
@@ -394,7 +401,7 @@ export async function POST(req: Request) {
         OPERATIONAL GUIDELINES:
         - Always fetch data before making assumptions about the state of tasks or projects.
         - When creating tasks, infer as much as possible (duration, energy) but keep it simple unless asked otherwise.
-        - If a user asks a general question (coding, research, etc.), answer it normally using your internal knowledge. Only use tools when the user's request relates to their engine, data, or productivity.
+        - If a user asks a general question (coding, research, etc.), answer it normally using your internal knowledge. Use 'search_web' when the user explicitly requests web research or when freshness/sources are required.
         - Be concise but thorough. Provide structured advice when relevant.
         - PROJECT DELETION: You have the power to delete projects. This is a high-entropy event. Only do this when the user explicitly asks for it. Confirm by listing project NAMES (not IDs), then proceed. Advise the user that this will also vanish all associated tasks.
         - If you use 'get_analytics', consider suggesting a chart if the data is trending or comparative.
@@ -736,6 +743,27 @@ export async function POST(req: Request) {
             }
           },
         },
+        search_web: {
+          description: 'Search the live web for up-to-date information and sources.',
+          inputSchema: z.object({
+            query: z.string().describe('The search query to run'),
+            maxResults: z.number().min(3).max(10).default(6),
+            includeDomains: z.array(z.string()).optional(),
+            excludeDomains: z.array(z.string()).optional(),
+            recencyDays: z.number().optional().describe('Limit results to the last N days'),
+            language: z.string().optional().describe('Two-letter language code, e.g., en')
+          }),
+          execute: async (params) => {
+            try {
+              console.log('[AI API] >> EXECUTE search_web:', params);
+              const results = await searchWeb(params);
+              return results;
+            } catch (e: any) {
+              console.error('[AI API] search_web error:', e);
+              return { error: e.message || 'search_web failed' };
+            }
+          }
+        },
         complete_task: {
           description: 'Mark a task as completed. This also rejuvenation the associated project health.',
           inputSchema: z.object({
@@ -1041,4 +1069,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
