@@ -14,6 +14,15 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const isChat = pathname === "/chat";
   const isExport = pathname?.startsWith("/export");
 
+  React.useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => console.log('[PWA] Service Worker registered:', reg.scope))
+        .catch((err) => console.error('[PWA] Service Worker registration failed:', err));
+    }
+  }, []);
+
   return (
     <QueryProvider>
       <SplashScreen />

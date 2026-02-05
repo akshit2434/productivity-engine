@@ -39,7 +39,7 @@ export function SplashScreen() {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="text-4xl font-extrabold tracking-tight text-white mb-4"
             >
-              Productivity
+              Entropy
             </motion.h1>
             <motion.div
               initial={{ opacity: 0 }}

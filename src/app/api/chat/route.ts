@@ -490,7 +490,7 @@ export async function POST(req: Request) {
           },
         },
         create_task: {
-          description: 'Create a new task in the productivity engine.',
+          description: 'Create a new task in Entropy.',
           inputSchema: z.object({
             title: z.string().describe('The title of the task'),
             projectId: z.string().uuid().describe('The EXACT UUID of the project (project_id)'),

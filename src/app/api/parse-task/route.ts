@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const SYSTEM_PROMPT = `
-You are the brain of "Entropy UI", a high-performance productivity engine.
+You are the brain of "Entropy", a high-performance context engine.
 Your task is to parse raw user input into a structured JSON object for task creation.
 
 Rules:

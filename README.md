@@ -5,7 +5,7 @@
 
 > *"In an era of infinite distraction, the greatest luxury is focus."*
 
-Entropy UI is a high-performance productivity engine designed for power users. It treats potential work as living entities that compete for your attention. By modeling work as **Entropy** (the inevitable decay of neglected priorities), the system ensures that nothing critical slips through the cracks while hiding the clutter that doesn't matter *now*.
+Entropy is a high-performance context engine designed for power users. It treats potential work as living entities that compete for your attention. By modeling work as **Entropy** (the inevitable decay of neglected priorities), the system ensures that nothing critical slips through the cracks while hiding the clutter that doesn't matter *now*.
 
 ---
 
@@ -57,7 +57,7 @@ A dedicated secure archive for strategic dumps, meeting notes, and project brain
 ---
 
 ## 3. AI & Voice Integration
-The productivity engine is managed by an active **Intelligence Partner**.
+Entropy is managed by an active **Intelligence Partner**.
 
 - **AI Assistant**: A high-capability Assistant with "God Mode" access to the engine's database. It can create tasks, manage projects, and analyze performance trends.
 - **Quick Capture**: "Record, Confirm, Done." Voice dumps are parsed into structured JSON by the AI.

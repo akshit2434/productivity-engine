@@ -14,13 +14,16 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Entropy UI | Dynamic Context Engine",
-  description: "A high-performance productivity engine for builders.",
+  title: "Entropy | Dynamic Context Engine",
+  description: "A high-performance context engine for builders.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Entropy",
+  },
+  icons: {
+    apple: "/web-app-manifest-192x192.png",
   },
 };
 
@@ -29,6 +32,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#000000",
 };
 
 export default function RootLayout({

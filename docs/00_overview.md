@@ -2,7 +2,7 @@
 
 ## What is Entropy?
 
-**Entropy** is a high-performance productivity engine designed for power users managing multiple complex projects ("projects") simultaneously. Named after the physics concept, it treats potential work as living entities that decay when neglected—ensuring nothing critical slips through the cracks while hiding the clutter that doesn't matter *now*.
+**Entropy** is a high-performance context engine designed for power users managing multiple complex projects ("projects") simultaneously. Named after the physics concept, it treats potential work as living entities that decay when neglected—ensuring nothing critical slips through the cracks while hiding the clutter that doesn't matter *now*.
 
 ### Core Philosophy
 - **High-Performance Minimalism:** Speed, clarity, and visual elegance. The interface should feel like a premium tool, not just a web app.
