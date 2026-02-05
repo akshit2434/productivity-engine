@@ -224,7 +224,11 @@ export default function ExportPage() {
         .gte("updated_at", startDate.toISOString())
         .lte("updated_at", endDate.toISOString())
         .order("updated_at", { ascending: false });
-      return (data || []) as CompletedTask[];
+
+      return (data || []).map((task: any) => ({
+        ...task,
+        projects: Array.isArray(task.projects) ? task.projects[0] : task.projects,
+      })) as CompletedTask[];
     },
   });
 
