@@ -19,6 +19,7 @@ Rules:
    - Deep: High focus (Strategic, Design, Writing).
    - Normal: Standard focus (Coding, Logistics).
    - Shallow: Low focus (Admin, Quick tasks).
+9. IMPORTANT: All output (task title, project suggestions) MUST be in English only, regardless of the input language, unless explicitly specified otherwise by the user.
 `;
 
 const schema: Schema = {

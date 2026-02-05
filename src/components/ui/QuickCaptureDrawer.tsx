@@ -163,6 +163,18 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
 
   const { isRecording, startRecording, stopRecording, analyser, audioBlob } = useVoiceRecorder();
 
+  // Shared helper: Convert Blob to base64 string
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const handleProcess = async (blobOverride?: Blob) => {
     const targetBlob = blobOverride || audioBlob;
     if (!input && !targetBlob) return;
@@ -174,16 +186,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         existingProjects: projects.map((p: any) => p.name)
       };
       if (targetBlob) {
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1]);
-          };
-        });
-        reader.readAsDataURL(targetBlob);
-        const base64Audio = await base64Promise;
-        
+        const base64Audio = await blobToBase64(targetBlob);
         body = {
           ...body,
           audio: base64Audio,
@@ -234,13 +237,16 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   const handleThoughtVoice = async (blob: Blob) => {
     setIsProcessing(true);
     try {
-      const formData = new FormData();
-      formData.append("audio", blob);
-      const res = await fetch("/api/transcribe", {
+      const base64Audio = await blobToBase64(blob);
+      const res = await fetch("/api/parse-thought", {
         method: "POST",
-        body: formData,
+        body: JSON.stringify({
+          audio: base64Audio,
+          mimeType: blob.type
+        }),
+        headers: { "Content-Type": "application/json" },
       });
-      if (!res.ok) throw new Error("Transcription failed");
+      if (!res.ok) throw new Error("Thought parsing failed");
       const data = await res.json();
       setThoughtInput(prev => prev ? prev + " " + data.text : data.text);
     } catch (error) {
