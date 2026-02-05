@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     });
 
     const { text } = await generateText({
-      model: google('gemini-2.0-flash'),
+      model: google('gemini-2.5-flash'),
       system: `
         You are a high-performance productivity assistant. 
         Your task is to refine and format the user's brain dump into a clear, structured Markdown note.

@@ -355,7 +355,7 @@ export async function POST(req: Request) {
 
   try {
     const result = streamText({
-      model: google('gemini-2.0-flash'),
+      model: google('gemini-3-flash-preview'),
       messages: modelMessages,
       stopWhen: stepCountIs(10),
       system: `
