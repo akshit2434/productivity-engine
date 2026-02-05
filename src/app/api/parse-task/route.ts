@@ -19,6 +19,7 @@ Rules:
    - Deep: High focus (Strategic, Design, Writing).
    - Normal: Standard focus (Coding, Logistics).
    - Shallow: Low focus (Admin, Quick tasks).
+9. If the user provides supporting details, context, or steps, capture them in "description" (Markdown allowed). Keep it short.
 9. IMPORTANT: All output (task title, project suggestions) MUST be in English only, regardless of the input language, unless explicitly specified otherwise by the user.
 `;
 
@@ -41,6 +42,11 @@ const schema: Schema = {
     energy: {
       type: SchemaType.STRING,
       description: "Energy type (Deep, Normal, Shallow)",
+    },
+    description: {
+      type: SchemaType.STRING,
+      description: "Short task description (Markdown allowed, optional)",
+      nullable: true,
     },
     recurrence: {
       type: SchemaType.NUMBER,

@@ -11,7 +11,7 @@ export function QuickCaptureFAB() {
     <>
       <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50">
         <button
-          className="w-14 h-14 bg-primary text-void rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] active:scale-95 transition-transform duration-100"
+          className="w-14 h-14 bg-primary text-void rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform duration-100"
           aria-label="Quick Capture"
           onClick={() => setIsDrawerOpen(true)}
         >

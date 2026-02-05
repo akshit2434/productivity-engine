@@ -18,6 +18,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   // Capture modes: 'task' (AI or Manual), 'thought' (silent dump to notes)
   const [captureMode, setCaptureMode] = useState<'task' | 'thought'>('task');
   const [isAiEnabled, setIsAiEnabled] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState("");
   const [thoughtInput, setThoughtInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,6 +26,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   // Manual Form State
   const [manualData, setManualData] = useState({
     title: "",
+    description: "",
     projectId: "NONE",
     projectName: "",
     duration: "30m",
@@ -80,6 +82,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
 
       const { error: taskError } = await supabase.from('tasks').insert({
         title: result.task,
+        description: result.description || null,
         project_id: finalProjectId || null,
         est_duration_minutes: parseDuration(result.duration?.toString()) || null,
         energy_tag: result.energy || 'Shallow',
@@ -98,6 +101,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         const optimisticTask = {
           id: Math.random().toString(),
           title: newResult.task,
+          description: newResult.description || "",
           projectId: newResult.projectId === "NONE" ? null : newResult.projectId,
           projectName: newResult.project || "Inbox",
           projectTier: 3,
@@ -132,8 +136,10 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   const resetState = () => {
     setInput("");
     setThoughtInput("");
+    setIsExpanded(false);
     setManualData({
       title: "",
+      description: "",
       projectId: "NONE",
       projectName: "",
       duration: "30m",
@@ -208,6 +214,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       // Populate manual form and exit AI mode
       setManualData({
         title: data.task,
+        description: data.description || "",
         projectId: matchingProject?.id || "NONE",
         projectName: matchingProject?.name || data.project || "",
         duration: data.duration || "30m",
@@ -215,6 +222,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
         dueDate: data.dueDate ? new Date(new Date(data.dueDate).getTime() - new Date(data.dueDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""
       });
       setIsAiEnabled(false);
+      setIsExpanded(false);
       setInput("");
     } catch (error) {
       console.error(error);
@@ -261,6 +269,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   const handleManualSubmit = () => {
     addTaskMutation.mutate({
       task: manualData.title,
+      description: manualData.description,
       project: manualData.projectName || "None",
       duration: manualData.duration,
       energy: manualData.energy,
@@ -294,7 +303,7 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xs font-mono uppercase tracking-widest text-primary flex items-center gap-2">
                 {captureMode === 'thought' ? <MessageCircle size={14} /> : isAiEnabled ? <Sparkles size={14} /> : <Zap size={14} />} 
-                {captureMode === 'thought' ? "Quick Thought" : isAiEnabled ? "AI Quick Capture" : "Manual Task"}
+                {captureMode === 'thought' ? "Quick Thought" : "Quick Capture"}
               </h2>
               <div className="flex items-center gap-3">
                 {/* Mode Toggle: Task vs Thought */}
@@ -407,36 +416,17 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                     />
                   </div>
 
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Description</label>
+                    <textarea
+                      className="w-full h-24 bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800 resize-none"
+                      placeholder="Add short context or steps (Markdown ok)..."
+                      value={manualData.description}
+                      onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5 overflow-visible">
-                      <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Duration</label>
-                      <div className="space-y-2">
-                        <input 
-                          type="text"
-                          className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800"
-                          placeholder="e.g. 30m, 1.5h, None"
-                          value={manualData.duration}
-                          onChange={(e) => setManualData({ ...manualData, duration: e.target.value })}
-                        />
-                        <div className="flex gap-1.5 flex-wrap">
-                          {['None', '15m', '30m', '1h', '2h'].map(suggest => (
-                            <button
-                              key={suggest}
-                              type="button"
-                              onClick={() => setManualData({ ...manualData, duration: suggest })}
-                              className={cn(
-                                "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-tight transition-all",
-                                manualData.duration === suggest 
-                                  ? "bg-primary text-void" 
-                                  : "bg-void border border-border text-zinc-600 hover:border-zinc-700"
-                              )}
-                            >
-                              {suggest}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Energy</label>
                       <select 
@@ -449,77 +439,123 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                         <option value="Deep">Deep</option>
                       </select>
                     </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Project</label>
-                    <select 
-                      className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none appearance-none"
-                      value={manualData.projectId}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "NONE") {
-                           setManualData({ ...manualData, projectId: "NONE", projectName: "Inbox" });
-                        } else {
-                           const p = projects.find((p: any) => p.id === val);
-                           setManualData({ ...manualData, projectId: val, projectName: p?.name || "" });
-                        }
-                      }}
-                    >
-                      <option value="NONE">Inbox</option>
-                      {projects.map((p: any) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Deadline</label>
-                    <div className="space-y-2">
-                        <input 
-                          type="datetime-local"
-                          className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800 text-zinc-300"
-                          value={manualData.dueDate}
-                          onChange={(e) => setManualData({ ...manualData, dueDate: e.target.value })}
-                        />
-                        <div className="flex gap-1.5 flex-wrap">
-                          {[
-                            { label: 'None', value: '' },
-                            { label: 'Today', value: (() => {
-                                const d = new Date();
-                                d.setHours(18, 0, 0, 0); // Default to 6 PM
-                                return d.toISOString().slice(0, 16);
-                            })() },
-                            { label: 'Tmrw', value: (() => {
-                                const d = new Date();
-                                d.setDate(d.getDate() + 1);
-                                d.setHours(9, 0, 0, 0); // Default to tomorrow 9 AM
-                                return d.toISOString().slice(0, 16);
-                            })() },
-                            { label: 'Next Mon', value: (() => {
-                                const d = new Date();
-                                d.setDate(d.getDate() + (1 + 7 - d.getDay()) % 7 || 7);
-                                d.setHours(9, 0, 0, 0);
-                                return d.toISOString().slice(0, 16);
-                            })() }
-                          ].map(suggest => (
-                            <button
-                              key={suggest.label}
-                              type="button"
-                              onClick={() => setManualData({ ...manualData, dueDate: suggest.value })}
-                              className={cn(
-                                "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-tight transition-all",
-                                manualData.dueDate === suggest.value 
-                                  ? "bg-primary text-void" 
-                                  : "bg-void border border-border text-zinc-600 hover:border-zinc-700"
-                              )}
-                            >
-                              {suggest.label}
-                            </button>
-                          ))}
-                        </div>
+                    <div className="space-y-1.5 flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => setIsExpanded((prev) => !prev)}
+                        className={cn(
+                          "w-full bg-void border border-border rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest transition-all",
+                          isExpanded ? "text-primary border-primary/40" : "text-zinc-500 hover:text-zinc-300"
+                        )}
+                      >
+                        {isExpanded ? "Less Options" : "More Options"}
+                      </button>
                     </div>
                   </div>
+
+                  {isExpanded && (
+                    <div className="space-y-4">
+                      <div className="space-y-1.5 overflow-visible">
+                        <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Duration</label>
+                        <div className="space-y-2">
+                          <input 
+                            type="text"
+                            className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800"
+                            placeholder="e.g. 30m, 1.5h, None"
+                            value={manualData.duration}
+                            onChange={(e) => setManualData({ ...manualData, duration: e.target.value })}
+                          />
+                          <div className="flex gap-1.5 flex-wrap">
+                            {['None', '15m', '30m', '1h', '2h'].map(suggest => (
+                              <button
+                                key={suggest}
+                                type="button"
+                                onClick={() => setManualData({ ...manualData, duration: suggest })}
+                                className={cn(
+                                  "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-tight transition-all",
+                                  manualData.duration === suggest 
+                                    ? "bg-primary text-void" 
+                                    : "bg-void border border-border text-zinc-600 hover:border-zinc-700"
+                                )}
+                              >
+                                {suggest}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Project</label>
+                        <select 
+                          className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none appearance-none"
+                          value={manualData.projectId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "NONE") {
+                               setManualData({ ...manualData, projectId: "NONE", projectName: "Inbox" });
+                            } else {
+                               const p = projects.find((p: any) => p.id === val);
+                               setManualData({ ...manualData, projectId: val, projectName: p?.name || "" });
+                            }
+                          }}
+                        >
+                          <option value="NONE">Inbox</option>
+                          {projects.map((p: any) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest ml-1">Deadline</label>
+                        <div className="space-y-2">
+                            <input 
+                              type="datetime-local"
+                              className="w-full bg-void border border-border rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-800 text-zinc-300"
+                              value={manualData.dueDate}
+                              onChange={(e) => setManualData({ ...manualData, dueDate: e.target.value })}
+                            />
+                            <div className="flex gap-1.5 flex-wrap">
+                              {[
+                                { label: 'None', value: '' },
+                                { label: 'Today', value: (() => {
+                                    const d = new Date();
+                                    d.setHours(18, 0, 0, 0); // Default to 6 PM
+                                    return d.toISOString().slice(0, 16);
+                                })() },
+                                { label: 'Tmrw', value: (() => {
+                                    const d = new Date();
+                                    d.setDate(d.getDate() + 1);
+                                    d.setHours(9, 0, 0, 0); // Default to tomorrow 9 AM
+                                    return d.toISOString().slice(0, 16);
+                                })() },
+                                { label: 'Next Mon', value: (() => {
+                                    const d = new Date();
+                                    d.setDate(d.getDate() + (1 + 7 - d.getDay()) % 7 || 7);
+                                    d.setHours(9, 0, 0, 0);
+                                    return d.toISOString().slice(0, 16);
+                                })() }
+                              ].map(suggest => (
+                                <button
+                                  key={suggest.label}
+                                  type="button"
+                                  onClick={() => setManualData({ ...manualData, dueDate: suggest.value })}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-tight transition-all",
+                                    manualData.dueDate === suggest.value 
+                                      ? "bg-primary text-void" 
+                                      : "bg-void border border-border text-zinc-600 hover:border-zinc-700"
+                                  )}
+                                >
+                                  {suggest.label}
+                                </button>
+                              ))}
+                            </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <motion.button
                     whileTap={{ scale: 0.98 }}

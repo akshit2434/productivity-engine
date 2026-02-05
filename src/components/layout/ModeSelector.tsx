@@ -17,7 +17,7 @@ export function ModeSelector() {
   const { mode, setMode } = useUserStore();
 
   return (
-    <div className="flex bg-surface border border-border rounded-lg p-1 mb-6">
+    <div className="flex bg-surface border border-border rounded-lg p-1 mb-0 md:mb-6">
       {MODES.map((m) => {
         const Icon = m.icon;
         const isActive = mode === m.label;

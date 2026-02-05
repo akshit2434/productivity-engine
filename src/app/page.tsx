@@ -22,6 +22,8 @@ export default function Home() {
   const { completeTask } = useTaskFulfillment();
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [projectFilters, setProjectFilters] = useState<string[]>([]);
   // 1. Fetch Active Tasks Query
   const { data: allActive = [], isLoading: isTasksLoading } = useQuery({
     queryKey: ['tasks', 'active'],
@@ -39,6 +41,69 @@ export default function Home() {
       return (data || []).map(mapTaskData);
     },
     staleTime: 1000 * 60 * 5, // Keep fresh for 5 mins
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects', 'all'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, name, tier, color')
+        .order('name', { ascending: true });
+      return data || [];
+    }
+  });
+
+  const { data: homePrefs } = useQuery({
+    queryKey: ['view_prefs', 'home'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('view_preferences')
+        .select('id, value')
+        .eq('key', 'home_filters')
+        .is('user_id', null)
+        .maybeSingle();
+      return data || null;
+    },
+    staleTime: 1000 * 60 * 5
+  });
+
+  useEffect(() => {
+    const saved = homePrefs?.value?.projectFilterIds;
+    if (Array.isArray(saved)) {
+      setProjectFilters(saved);
+    }
+  }, [homePrefs]);
+
+  const savePrefsMutation = useMutation({
+    mutationFn: async (nextFilters: string[]) => {
+      const { data: existing } = await supabase
+        .from('view_preferences')
+        .select('id')
+        .eq('key', 'home_filters')
+        .is('user_id', null)
+        .maybeSingle();
+      
+      const payload = {
+        key: 'home_filters',
+        value: { projectFilterIds: nextFilters },
+        user_id: null
+      };
+
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('view_preferences')
+          .update({ value: payload.value, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('view_preferences')
+        .insert(payload);
+      if (error) throw error;
+    }
   });
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -135,14 +200,35 @@ export default function Home() {
   }, [supabase, queryClient]);
 
   // Filter & Logic
-  let constrainedTasks = allActive;
+  let filteredTasks = allActive;
+  if (projectFilters.length > 0) {
+    filteredTasks = allActive.filter((t) => {
+      const isInbox = !t.projectId;
+      if (isInbox) return projectFilters.includes('INBOX');
+      return projectFilters.includes(t.projectId);
+    });
+  }
+
+  let constrainedTasks = filteredTasks;
   if (timeAvailable) {
-    constrainedTasks = allActive.filter(t => t.durationMinutes <= timeAvailable);
+    constrainedTasks = constrainedTasks.filter(t => t.durationMinutes <= timeAvailable);
   }
 
   const sorted = sortTasksByUrgency(constrainedTasks, mode);
-  const { focus: focusTasks, admin: adminTasks } = filterAdminTasks(sorted);
+  const inboxTasks = sorted.filter((t) => !t.projectId);
+  const nonInboxTasks = sorted.filter((t) => t.projectId);
+  const sortedWithInboxFirst = [...inboxTasks, ...nonInboxTasks];
+  const { focus: focusTasks, admin: adminTasks } = filterAdminTasks(sortedWithInboxFirst);
   const isLoading = isTasksLoading;
+  const activeFilterCount = projectFilters.length;
+
+  const toggleProjectFilter = (id: string) => {
+    const next = projectFilters.includes(id)
+      ? projectFilters.filter((pid) => pid !== id)
+      : [...projectFilters, id];
+    setProjectFilters(next);
+    savePrefsMutation.mutate(next);
+  };
 
   return (
     <div className="px-6 pt-12 pb-32 max-w-md md:max-w-6xl mx-auto">
@@ -168,11 +254,80 @@ export default function Home() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
         <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-surface/40 backdrop-blur-md border border-border/20 rounded-[2rem] p-4 flex flex-col justify-center">
-            <ModeSelector />
+          <div className="bg-surface/40 backdrop-blur-md border border-border/20 rounded-[2rem] p-4">
+            <div className="space-y-4">
+              <ModeSelector />
+              <TimeAvailableSelector />
+            </div>
           </div>
-          <div className="bg-surface/40 backdrop-blur-md border border-border/20 rounded-[2rem] p-4 flex flex-col justify-center">
-            <TimeAvailableSelector />
+          <div className="bg-surface/40 backdrop-blur-md border border-border/20 rounded-[2rem] p-4">
+            <button
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <div>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Filters</p>
+                <p className="text-sm font-semibold text-zinc-200">Projects</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {activeFilterCount > 0 ? (
+                  <span className="bg-primary/10 text-primary text-[9px] font-bold px-2 py-1 rounded-lg uppercase tracking-widest">
+                    {activeFilterCount} Active
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">All</span>
+                )}
+                <span className="text-xs text-zinc-600">{filtersOpen ? "−" : "+"}</span>
+              </div>
+            </button>
+
+            {filtersOpen && (
+              <div className="mt-4 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => toggleProjectFilter("INBOX")}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-all",
+                    projectFilters.includes("INBOX")
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "bg-void/40 border-border/20 text-zinc-500 hover:text-zinc-300"
+                  )}
+                >
+                  <span>Inbox</span>
+                  {projectFilters.includes("INBOX") && <span className="text-[9px]">On</span>}
+                </button>
+
+                {projects.map((p: any) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggleProjectFilter(p.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-all",
+                      projectFilters.includes(p.id)
+                        ? "bg-primary/10 border-primary/30 text-primary"
+                        : "bg-void/40 border-border/20 text-zinc-500 hover:text-zinc-300"
+                    )}
+                  >
+                    <span>{p.name}</span>
+                    {projectFilters.includes(p.id) && <span className="text-[9px]">On</span>}
+                  </button>
+                ))}
+
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectFilters([]);
+                      savePrefsMutation.mutate([]);
+                    }}
+                    className="w-full mt-2 bg-void/40 border border-border/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

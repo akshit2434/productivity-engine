@@ -15,7 +15,7 @@ export function TimeAvailableSelector() {
   const { timeAvailable, setTimeAvailable } = useUserStore();
 
   return (
-    <div className="flex items-center gap-3 mb-6 bg-surface border border-border rounded-lg px-3 py-2">
+    <div className="flex items-center gap-3 mb-0 md:mb-6 bg-surface border border-border rounded-lg px-3 py-2">
       <div className="flex items-center gap-1.5 text-zinc-500">
         <Clock size={12} />
         <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Limit</span>
