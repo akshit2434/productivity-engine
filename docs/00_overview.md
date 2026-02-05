@@ -2,18 +2,18 @@
 
 ## What is Entropy?
 
-**Entropy** is a high-performance productivity engine designed for power users managing multiple complex projects ("boats") simultaneously. Named after the physics concept, it treats potential work as living entities that decay when neglected—ensuring nothing critical slips through the cracks while hiding the clutter that doesn't matter *now*.
+**Entropy** is a high-performance productivity engine designed for power users managing multiple complex projects ("projects") simultaneously. Named after the physics concept, it treats potential work as living entities that decay when neglected—ensuring nothing critical slips through the cracks while hiding the clutter that doesn't matter *now*.
 
 ### Core Philosophy
 - **High-Performance Minimalism:** Speed, clarity, and visual elegance. The interface should feel like a premium tool, not just a web app.
 - **Probabilistic Scheduling:** Work is modeled as entropy (decay). If you ignore a project, its tasks rise in urgency automatically.
-- **Cognitive Partnership:** The AI assistant ("The Prophet") is moving from a simple tool to a "Second Brain" that remembers, anticipates, and acts in the background.
+- **Cognitive Partnership:** The AI Assistant is moving from a simple tool to a "Second Brain" that remembers, anticipates, and acts in the background.
 
 ### Current Features (v1.0)
-- **Syllabus (Dashboard):** A dynamic, urgency-sorted task list using the entropy decay algorithm.
-- **Portfolio (Boats):** High-level tracking of active projects with tier-based weights and health monitoring.
-- **The Prophet (Chat):** A "God Mode" AI assistant capable of managing tasks and projects via tool calls.
-- **Strategy Logs (Notes):** AI-enhanced knowledge base for unstructured thoughts.
+- **Dashboard:** A dynamic, urgency-sorted task list using the entropy decay algorithm.
+- **Projects:** High-level tracking of active projects with tier-based weights and health monitoring.
+- **AI Assistant (Chat):** A "God Mode" Assistant capable of managing tasks and projects via tool calls.
+- **Notes:** AI-enhanced knowledge base for unstructured thoughts.
 - **Quick Capture:** Rapid mobile-first entry for tasks via text or voice.
 
 ### v2.0 Vision: The Second Brain
@@ -44,4 +44,4 @@ The next evolution focus on three pillars:
 ## Code Integrity
 - **Engine Logic:** `src/lib/engine.ts` is the single source of truth for urgency math.
 - **Supabase Security:** Use the service role key for system-level operations in server environments.
-- **AI Integration:** Use Vercel AI SDK for all Prophet interactions. Ensure multi-step tool calls are enabled.
+- **AI Integration:** Use Vercel AI SDK for all AI Assistant interactions. Ensure multi-step tool calls are enabled.

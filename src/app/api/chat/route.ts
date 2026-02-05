@@ -29,7 +29,7 @@ async function convertWebmToMp3(webmBuffer: Buffer): Promise<Buffer> {
       await unlink(inputPath);
       await unlink(outputPath);
     } catch (e) {
-      console.error('[Prophet API] Cleanup failed:', e);
+      console.error('[AI API] Cleanup failed:', e);
     }
   }
 }
@@ -77,19 +77,19 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch (e) {
-    console.error("[Prophet API] Failed to parse request body:", e);
+    console.error("[AI API] Failed to parse request body:", e);
     return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
   }
 
   const { messages, sessionId } = body;
 
   // Compact logging to avoid console spam
-  console.log(`[Prophet API] Request: sessionId=${sessionId}, messages=${messages?.length}`);
+  console.log(`[AI API] Request: sessionId=${sessionId}, messages=${messages?.length}`);
 
   
   if (!messages || !Array.isArray(messages)) {
-    console.error(`[Prophet API] 'messages' is missing or not an array. Actual type:`, typeof messages);
-    console.error(`[Prophet API] Full Body:`, JSON.stringify(body, null, 2));
+    console.error(`[AI API] 'messages' is missing or not an array. Actual type:`, typeof messages);
+    console.error(`[AI API] Full Body:`, JSON.stringify(body, null, 2));
     
     return new Response(JSON.stringify({ error: "Messages array is required" }), { status: 400 });
   }
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
     
     // Skip tool-role messages entirely - they cause schema errors
     if (role === 'tool') {
-      console.log("[Prophet API] Skipping tool-role message");
+      console.log("[AI API] Skipping tool-role message");
       return null;
     }
 
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
               const arrayBuffer = await response.arrayBuffer();
               buffer = Buffer.from(arrayBuffer);
             } catch (fetchError) {
-              console.error('[Prophet API] Failed to fetch audio from URL:', fetchError);
+              console.error('[AI API] Failed to fetch audio from URL:', fetchError);
               return { type: 'text', text: '[Error: Failed to load audio attachment]' };
             }
           } else if (part.url && part.url.startsWith('data:')) {
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
                 buffer = await convertWebmToMp3(buffer);
                 mediaType = 'audio/mp3';
               } catch (convError) {
-                console.error('[Prophet API] Audio conversion failed:', convError);
+                console.error('[AI API] Audio conversion failed:', convError);
               }
             }
 
@@ -201,7 +201,7 @@ export async function POST(req: Request) {
   }
 
   // Compact logging
-  console.log(`[Prophet API] Transformed: ${finalMessages.length} messages, roles: [${finalMessages.map(m => m.role).join(', ')}]`);
+  console.log(`[AI API] Transformed: ${finalMessages.length} messages, roles: [${finalMessages.map(m => m.role).join(', ')}]`);
 
   // FINAL VALIDATION: Ensure only valid roles are present
   const validRoles = ['user', 'assistant', 'system'];
@@ -274,7 +274,7 @@ export async function POST(req: Request) {
         content: textContent || 'Multimodal Message',
         parts: messageParts
       });
-      if (error) console.error("[Prophet API] Error saving user message:", error);
+      if (error) console.error("[AI API] Error saving user message:", error);
     }
   }
 
@@ -286,7 +286,7 @@ export async function POST(req: Request) {
   // --- Memory Retrieval (RAG) ---
   let retrievedContext = "";
   try {
-    console.log(`[Prophet API] RAG: Starting memory retrieval...`);
+    console.log(`[AI API] RAG: Starting memory retrieval...`);
     const lastUserMessage = messages.findLast((m: any) => m.role === 'user');
     
     // Extract text from content (string), content (array), or parts (Vercel AI SDK format)
@@ -299,14 +299,14 @@ export async function POST(req: Request) {
       queryText = lastUserMessage.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join(' ');
     }
 
-    console.log(`[Prophet API] RAG: Query text = "${queryText.substring(0, 100)}"`);
+    console.log(`[AI API] RAG: Query text = "${queryText.substring(0, 100)}"`);
 
     if (queryText) {
       const { embedding } = await embed({
         model: google.textEmbeddingModel('text-embedding-004'),
         value: queryText,
       });
-      console.log(`[Prophet API] RAG: Generated embedding (length: ${embedding?.length})`);
+      console.log(`[AI API] RAG: Generated embedding (length: ${embedding?.length})`);
 
       // 1. Vector Search for General Memories
       // Note: This requires the match_memories RPC to be defined in Supabase
@@ -317,9 +317,9 @@ export async function POST(req: Request) {
       });
 
       if (rpcError) {
-        console.error(`[Prophet API] RAG: match_memories RPC error:`, rpcError);
+        console.error(`[AI API] RAG: match_memories RPC error:`, rpcError);
       } else {
-        console.log(`[Prophet API] RAG: Found ${generalMemories?.length || 0} general memories`);
+        console.log(`[AI API] RAG: Found ${generalMemories?.length || 0} general memories`);
       }
 
       // 2. Fetch all Directives
@@ -329,9 +329,9 @@ export async function POST(req: Request) {
         .eq('type', 'directive');
 
       if (directivesError) {
-        console.error(`[Prophet API] RAG: Directives query error:`, directivesError);
+        console.error(`[AI API] RAG: Directives query error:`, directivesError);
       } else {
-        console.log(`[Prophet API] RAG: Found ${directives?.length || 0} directives`);
+        console.log(`[AI API] RAG: Found ${directives?.length || 0} directives`);
       }
 
       if (generalMemories?.length || directives?.length) {
@@ -342,15 +342,15 @@ export async function POST(req: Request) {
         if (generalMemories?.length) {
           retrievedContext += "Contextual Memories:\n" + generalMemories.map((m: any) => `- ${m.content}`).join('\n') + "\n";
         }
-        console.log(`[Prophet API] RAG: Injected ${directives?.length || 0} directives and ${generalMemories?.length || 0} general memories.`);
+        console.log(`[AI API] RAG: Injected ${directives?.length || 0} directives and ${generalMemories?.length || 0} general memories.`);
       } else {
-        console.log(`[Prophet API] RAG: No matching memories or directives found.`);
+        console.log(`[AI API] RAG: No matching memories or directives found.`);
       }
     } else {
-      console.log(`[Prophet API] RAG: No query text found, skipping retrieval.`);
+      console.log(`[AI API] RAG: No query text found, skipping retrieval.`);
     }
   } catch (ragError) {
-    console.error("[Prophet API] RAG Error:", ragError);
+    console.error("[AI API] RAG Error:", ragError);
   }
 
   try {
@@ -359,19 +359,19 @@ export async function POST(req: Request) {
       messages: modelMessages,
       stopWhen: stepCountIs(10),
       system: `
-        You are the Prophet. You are a highly capable, non-chalant, and slightly stoic intelligence designed to manage this Productivity Engine. 
+        You are the Assistant. You are a highly capable, non-chalant, and slightly stoic intelligence designed to manage this Productivity Engine. 
         Your personality is professional yet easy-going—think ChatGPT but with a specific focus on high-performance execution.
 
         ALWAYS provide a verbal response to the user, even if you are just confirming a tool action or summarizing your findings. 
         Your response should NEVER be empty.
 
-        You help the user manage "Boats" (Projects) and overcome "Entropy" (The decay that happens when important things are neglected). 
-        Everything in this system revolves around the "Syllabus"—the curated, probabilistic list of what actually matters right now.
+        You help the user manage Projects and overcome "Entropy" (The decay that happens when important things are neglected). 
+        Everything in this system revolves around the Dashboard—the curated, probabilistic list of what actually matters right now.
         
         PHASE 2 CAPABILITIES:
         - Voice Mastery: You can "listen" to audio inputs if they are provided. If you receive an audio part, analyze it as if it were a direct spoken command or brain dump.
-        - Syllabus Awareness: You have access to the mathematical urgency scores of all tasks. Use 'get_syllabus' to give the user precise advice on what to execute next based on their available time and energy mode.
-        - Health Orchestration: When a user completes a task via you, use 'complete_task'. This not only marks it done but also rejuvenates their "Boat" (Project) by updating its health metrics.
+        - Dashboard Awareness: You have access to the mathematical urgency scores of all tasks. Use 'get_syllabus' to give the user precise advice on what to execute next based on their available time and energy mode.
+        - Health Orchestration: When a user completes a task via you, use 'complete_task'. This not only marks it done but also rejuvenates their Project by updating its health metrics.
 
         MEMORY & CONTEXT (PHASE 1):
         - Long-term Memory: When a user states a preference or rule, save it as a "Directive" via 'save_memory'. This will be recalled in future sessions.
@@ -382,7 +382,7 @@ export async function POST(req: Request) {
         CORE PHILOSOPHY:
         - High-Performance Minimalism: We value speed, clarity, and visual elegance (Slate/Charcoal/Glassmorphism).
         - Entropy: Tasks that haven't been touched decay. You are here to prevent that.
-        - Boats: These aren't just projects; they are vessels the user is captaining.
+        - Projects: These are persistent entities the user is keeping on track.
 
         TOOL USAGE (CRITICAL):
         - Tools are YOUR internal capabilities. The user does NOT have access to them and should NEVER be asked to "use" a tool.
@@ -408,7 +408,7 @@ export async function POST(req: Request) {
             days: z.number().default(7),
           }),
           execute: async ({ type, days }: { type: 'activity_logs' | 'task_distribution' | 'stagnation_report' | 'all', days: number }) => {
-            console.log(`[Prophet API] >> EXECUTE get_analytics:`, { type, days });
+            console.log(`[AI API] >> EXECUTE get_analytics:`, { type, days });
             const now = new Date();
             const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 
@@ -457,7 +457,7 @@ export async function POST(req: Request) {
             dataKeys: z.array(z.string()),
           }),
           execute: async (params) => {
-            console.log(`[Prophet API] >> EXECUTE generate_chart:`, JSON.stringify(params, null, 2));
+            console.log(`[AI API] >> EXECUTE generate_chart:`, JSON.stringify(params, null, 2));
             return params;
           },
         },
@@ -471,20 +471,20 @@ export async function POST(req: Request) {
           }),
           execute: async ({ projectId, state, query, limit }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE list_tasks:`, { projectId, state, query });
+              console.log(`[AI API] >> EXECUTE list_tasks:`, { projectId, state, query });
               let builder = supabase.from('tasks').select('*, projects(name)');
               if (projectId) builder = builder.eq('project_id', projectId);
               if (state) builder = builder.eq('state', state);
               if (query) builder = builder.ilike('title', `%${query}%`);
               const { data, error } = await builder.limit(limit).order('created_at', { ascending: false });
               if (error) {
-                console.error(`[Prophet API] list_tasks error:`, error);
+                console.error(`[AI API] list_tasks error:`, error);
                 return { error: error.message };
               }
               return data;
             } catch (e: unknown) {
               const error = e as Error;
-              console.error(`[Prophet API] list_tasks critical error:`, error);
+              console.error(`[AI API] list_tasks critical error:`, error);
               return { error: error.message };
             }
           },
@@ -502,7 +502,7 @@ export async function POST(req: Request) {
           }),
           execute: async (taskData) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE create_task:`, taskData);
+              console.log(`[AI API] >> EXECUTE create_task:`, taskData);
               
               // Clean up due_date to avoid Postgres errors if it's empty or invalid
               const sanitizedDueDate = taskData.due_date && taskData.due_date.trim() !== '' 
@@ -520,7 +520,7 @@ export async function POST(req: Request) {
               }).select('*, projects(name)').single();
               
               if (error) {
-                console.error(`[Prophet API] create_task DB error:`, error);
+                console.error(`[AI API] create_task DB error:`, error);
                 return { 
                   error: error.message, 
                   details: error.details, 
@@ -531,7 +531,7 @@ export async function POST(req: Request) {
               return data;
             } catch (e: unknown) {
               const error = e as Error;
-              console.error(`[Prophet API] create_task critical error:`, error);
+              console.error(`[AI API] create_task critical error:`, error);
               return { error: error.message };
             }
           },
@@ -547,7 +547,7 @@ export async function POST(req: Request) {
             energy_tag: z.enum(['Grind', 'Creative', 'Shallow']).optional(),
           }),
           execute: async ({ id, ...updates }) => {
-            console.log(`[Prophet API] >> EXECUTE update_task:`, { id, updates });
+            console.log(`[AI API] >> EXECUTE update_task:`, { id, updates });
             const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single();
             if (error) throw error;
             return data;
@@ -559,7 +559,7 @@ export async function POST(req: Request) {
             id: z.string(),
           }),
           execute: async ({ id }) => {
-            console.log(`[Prophet API] >> EXECUTE delete_task:`, id);
+            console.log(`[AI API] >> EXECUTE delete_task:`, id);
             // First delete associated activity logs to prevent orphaned analytics
             await supabase.from('activity_logs').delete().eq('task_id', id);
             const { error } = await supabase.from('tasks').delete().eq('id', id);
@@ -568,17 +568,17 @@ export async function POST(req: Request) {
           },
         },
         get_projects: {
-          description: 'List all available projects (Boats).',
+          description: 'List all available projects.',
           inputSchema: z.object({}),
           execute: async () => {
-            console.log(`[Prophet API] >> EXECUTE get_projects`);
+            console.log(`[AI API] >> EXECUTE get_projects`);
             const { data, error } = await supabase.from('projects').select('*').order('tier', { ascending: true });
             if (error) throw error;
             return data;
           },
         },
         create_project: {
-          description: 'Create a new project (Boat). Returns the project entity including its UUID in the "id" field.',
+          description: 'Create a new project. Returns the project entity including its UUID in the "id" field.',
           inputSchema: z.object({
             name: z.string(),
             tier: z.number().min(1).max(4).default(3),
@@ -588,37 +588,37 @@ export async function POST(req: Request) {
           }),
           execute: async (projectData) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE create_project:`, projectData);
+              console.log(`[AI API] >> EXECUTE create_project:`, projectData);
               const { data, error } = await supabase.from('projects').insert(projectData).select().single();
               if (error) {
-                console.error(`[Prophet API] create_project error:`, error);
+                console.error(`[AI API] create_project error:`, error);
                 return { error: error.message };
               }
               return data;
             } catch (e: unknown) {
               const error = e as Error;
-              console.error(`[Prophet API] create_project critical error:`, error);
+              console.error(`[AI API] create_project critical error:`, error);
               return { error: error.message };
             }
           },
         },
         delete_project: {
-          description: 'Delete a project (Boat) and all its associated tasks.',
+          description: 'Delete a project and all its associated tasks.',
           inputSchema: z.object({
             id: z.string().uuid().describe('The UUID of the project to delete'),
           }),
           execute: async ({ id }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE delete_project:`, id);
+              console.log(`[AI API] >> EXECUTE delete_project:`, id);
               const { error } = await supabase.from('projects').delete().eq('id', id);
               if (error) {
-                console.error(`[Prophet API] delete_project error:`, error);
+                console.error(`[AI API] delete_project error:`, error);
                 return { error: error.message };
               }
               return { success: true };
             } catch (e: unknown) {
               const error = e as Error;
-              console.error(`[Prophet API] delete_project critical error:`, error);
+              console.error(`[AI API] delete_project critical error:`, error);
               return { error: error.message };
             }
           },
@@ -631,7 +631,7 @@ export async function POST(req: Request) {
             isVoiceTranscript: z.boolean().default(false),
           }),
           execute: async ({ taskId, content, isVoiceTranscript }) => {
-            console.log(`[Prophet API] >> EXECUTE add_note:`, { taskId });
+            console.log(`[AI API] >> EXECUTE add_note:`, { taskId });
             const { data, error } = await supabase.from('task_notes').insert({
               task_id: taskId,
               content,
@@ -647,7 +647,7 @@ export async function POST(req: Request) {
             id: z.string(),
           }),
           execute: async ({ id }) => {
-            console.log(`[Prophet API] >> EXECUTE get_task_details:`, id);
+            console.log(`[AI API] >> EXECUTE get_task_details:`, id);
             const [taskRes, notesRes, subtasksRes] = await Promise.all([
               supabase.from('tasks').select('*, projects(name)').eq('id', id).single(),
               supabase.from('task_notes').select('*').eq('task_id', id).order('created_at', { ascending: false }),
@@ -668,7 +668,7 @@ export async function POST(req: Request) {
             title: z.string(),
           }),
           execute: async ({ taskId, title }) => {
-            console.log(`[Prophet API] >> EXECUTE add_subtask:`, { taskId, title });
+            console.log(`[AI API] >> EXECUTE add_subtask:`, { taskId, title });
             const { data, error } = await supabase.from('subtasks').insert({
               task_id: taskId,
               title,
@@ -685,7 +685,7 @@ export async function POST(req: Request) {
             isCompleted: z.boolean(),
           }),
           execute: async ({ id, isCompleted }) => {
-            console.log(`[Prophet API] >> EXECUTE toggle_subtask:`, { id, isCompleted });
+            console.log(`[AI API] >> EXECUTE toggle_subtask:`, { id, isCompleted });
             const { data, error } = await supabase.from('subtasks').update({
               is_completed: isCompleted
             }).eq('id', id).select().single();
@@ -702,7 +702,7 @@ export async function POST(req: Request) {
           }),
           execute: async ({ timeAvailableMinutes, mode, limit }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE get_syllabus:`, { timeAvailableMinutes, mode });
+              console.log(`[AI API] >> EXECUTE get_syllabus:`, { timeAvailableMinutes, mode });
               const { data, error } = await supabase
                 .from('tasks')
                 .select('*, projects(name, tier, decay_threshold_days)')
@@ -731,7 +731,7 @@ export async function POST(req: Request) {
               return scoredTasks.slice(0, limit);
             } catch (e: unknown) {
               const error = e as Error;
-              console.error(`[Prophet API] get_syllabus error:`, error);
+              console.error(`[AI API] get_syllabus error:`, error);
               return { error: error.message };
             }
           },
@@ -745,7 +745,7 @@ export async function POST(req: Request) {
           }),
           execute: async ({ taskId, durationMinutes, sessionMode }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE complete_task:`, { taskId });
+              console.log(`[AI API] >> EXECUTE complete_task:`, { taskId });
               
               // 1. Fetch task and project info
               const { data: task, error: fetchErr } = await supabase
@@ -785,7 +785,7 @@ export async function POST(req: Request) {
               if (updateTask.error) throw updateTask.error;
               if (updateProject.error) throw updateProject.error;
               // Activity log failure is non-critical but worth noting
-              if (logActivity.error) console.error("[Prophet API] Activity log error:", logActivity.error);
+              if (logActivity.error) console.error("[AI API] Activity log error:", logActivity.error);
 
               return { 
                 success: true, 
@@ -795,7 +795,7 @@ export async function POST(req: Request) {
               };
             } catch (e: unknown) {
               const error = e as Error;
-              console.error(`[Prophet API] complete_task error:`, error);
+              console.error(`[AI API] complete_task error:`, error);
               return { error: error.message };
             }
           },
@@ -808,7 +808,7 @@ export async function POST(req: Request) {
           }),
           execute: async ({ content, type }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE save_memory:`, { type });
+              console.log(`[AI API] >> EXECUTE save_memory:`, { type });
               
               // Generate embedding for the memory
               const { embedding } = await embed({
@@ -824,7 +824,7 @@ export async function POST(req: Request) {
               });
 
               if (similar && similar.length > 0) {
-                console.log(`[Prophet API] save_memory: Duplicate detected (similarity: ${similar[0].similarity})`);
+                console.log(`[AI API] save_memory: Duplicate detected (similarity: ${similar[0].similarity})`);
                 // Update existing memory instead of creating a duplicate
                 const { data, error } = await supabase.from('memories').update({
                   content,
@@ -847,7 +847,7 @@ export async function POST(req: Request) {
               if (error) throw error;
               return { success: true, action: 'created', memory: data };
             } catch (e: any) {
-              console.error(`[Prophet API] save_memory error:`, e);
+              console.error(`[AI API] save_memory error:`, e);
               return { error: e.message };
             }
           }
@@ -861,7 +861,7 @@ export async function POST(req: Request) {
           }),
           execute: async ({ memoryId, content, type }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE update_memory:`, memoryId);
+              console.log(`[AI API] >> EXECUTE update_memory:`, memoryId);
               
               // Generate new embedding
               const { embedding } = await embed({
@@ -881,7 +881,7 @@ export async function POST(req: Request) {
               if (error) throw error;
               return { success: true, memory: data };
             } catch (e: any) {
-              console.error(`[Prophet API] update_memory error:`, e);
+              console.error(`[AI API] update_memory error:`, e);
               return { error: e.message };
             }
           }
@@ -893,12 +893,12 @@ export async function POST(req: Request) {
           }),
           execute: async ({ memoryId }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE delete_memory:`, memoryId);
+              console.log(`[AI API] >> EXECUTE delete_memory:`, memoryId);
               const { error } = await supabase.from('memories').delete().eq('id', memoryId);
               if (error) throw error;
               return { success: true };
             } catch (e: any) {
-              console.error(`[Prophet API] delete_memory error:`, e);
+              console.error(`[AI API] delete_memory error:`, e);
               return { error: e.message };
             }
           }
@@ -911,7 +911,7 @@ export async function POST(req: Request) {
           }),
           execute: async ({ type, limit }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE list_memories:`, { type });
+              console.log(`[AI API] >> EXECUTE list_memories:`, { type });
               let query = supabase.from('memories').select('id, content, type, created_at').order('created_at', { ascending: false }).limit(limit);
               if (type !== 'all') {
                 query = query.eq('type', type);
@@ -920,7 +920,7 @@ export async function POST(req: Request) {
               if (error) throw error;
               return data;
             } catch (e: any) {
-              console.error(`[Prophet API] list_memories error:`, e);
+              console.error(`[AI API] list_memories error:`, e);
               return { error: e.message };
             }
           }
@@ -932,7 +932,7 @@ export async function POST(req: Request) {
           }),
           execute: async ({ projectId }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE get_context_card:`, projectId);
+              console.log(`[AI API] >> EXECUTE get_context_card:`, projectId);
               const { data, error } = await supabase
                 .from('context_cards')
                 .select('*')
@@ -942,7 +942,7 @@ export async function POST(req: Request) {
               if (error && error.code !== 'PGRST116') throw error;
               return data || { content: "No context card defined for this project." };
             } catch (e: any) {
-              console.error(`[Prophet API] get_context_card error:`, e);
+              console.error(`[AI API] get_context_card error:`, e);
               return { error: e.message };
             }
           }
@@ -955,7 +955,7 @@ export async function POST(req: Request) {
           }),
           execute: async ({ projectId, content }) => {
             try {
-              console.log(`[Prophet API] >> EXECUTE update_context_card:`, projectId);
+              console.log(`[AI API] >> EXECUTE update_context_card:`, projectId);
               const { data, error } = await supabase
                 .from('context_cards')
                 .upsert({ project_id: projectId, content, updated_at: new Date().toISOString() })
@@ -965,7 +965,7 @@ export async function POST(req: Request) {
               if (error) throw error;
               return { success: true, card: data };
             } catch (e: any) {
-              console.error(`[Prophet API] update_context_card error:`, e);
+              console.error(`[AI API] update_context_card error:`, e);
               return { error: e.message };
             }
           }
@@ -975,7 +975,7 @@ export async function POST(req: Request) {
         // Save assistant response to Supabase if sessionId is provided
         if (sessionId && sessionId !== 'undefined' && sessionId !== 'null') {
           try {
-            console.log(`[Prophet API] onFinish: Persisting multi-step turn data...`);
+            console.log(`[AI API] onFinish: Persisting multi-step turn data...`);
             
             if (response && response.messages && response.messages.length > 0) {
               // response.messages contains ALL messages from the current interaction, 
@@ -1014,11 +1014,11 @@ export async function POST(req: Request) {
                   parts: msg.content
                 });
 
-                if (error) console.error(`[Prophet API] Persist Error (${msg.role}):`, error);
+                if (error) console.error(`[AI API] Persist Error (${msg.role}):`, error);
               }
             }
           } catch (error) {
-            console.error("[Prophet API] Critical multi-step persistence failure:", error);
+            console.error("[AI API] Critical multi-step persistence failure:", error);
           }
         }
       }
@@ -1029,7 +1029,7 @@ export async function POST(req: Request) {
     // Compact error logging - avoid flooding console with massive Zod validation errors
     const errorMessage = error?.message || 'Unknown error';
     const errorName = error?.name || 'Error';
-    console.error(`[Prophet API] ${errorName}: ${errorMessage.substring(0, 200)}${errorMessage.length > 200 ? '...' : ''}`);
+    console.error(`[AI API] ${errorName}: ${errorMessage.substring(0, 200)}${errorMessage.length > 200 ? '...' : ''}`);
     
     // Return a user-friendly error response
     return new Response(

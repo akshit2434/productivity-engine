@@ -63,8 +63,8 @@ function ChatInterface() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: 'I am the Prophet. State your objective or inquire about your momentum.',
-        parts: [{ type: 'text', text: 'I am the Prophet. State your objective or inquire about your momentum.' }],
+        content: 'I am the Assistant. State your objective or inquire about your momentum.',
+        parts: [{ type: 'text', text: 'I am the Assistant. State your objective or inquire about your momentum.' }],
       } as UIMessage,
     ],
     onFinish: (message) => {
@@ -100,8 +100,8 @@ function ChatInterface() {
     const welcomeMessage = {
       id: 'welcome',
       role: 'assistant',
-      content: 'I am the Prophet. State your objective or inquire about your momentum.',
-      parts: [{ type: 'text', text: 'I am the Prophet. State your objective or inquire about your momentum.' }],
+      content: 'I am the Assistant. State your objective or inquire about your momentum.',
+      parts: [{ type: 'text', text: 'I am the Assistant. State your objective or inquire about your momentum.' }],
     } as UIMessage;
 
     if (sessionId && sessionId !== 'undefined' && sessionId !== 'null') {
@@ -169,8 +169,8 @@ function ChatInterface() {
         {
           id: 'welcome',
           role: 'assistant',
-          content: 'I am the Prophet. State your objective or inquire about your momentum.',
-          parts: [{ type: 'text', text: 'I am the Prophet. State your objective or inquire about your momentum.' }],
+          content: 'I am the Assistant. State your objective or inquire about your momentum.',
+          parts: [{ type: 'text', text: 'I am the Assistant. State your objective or inquire about your momentum.' }],
         } as UIMessage,
       ]);
     }
@@ -219,7 +219,7 @@ function ChatInterface() {
       const res = await fetch('/api/chat/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'New Prophecy' }),
+        body: JSON.stringify({ title: 'New Chat' }),
       });
       const data = await res.json();
       if (data.id) {
@@ -236,7 +236,7 @@ function ChatInterface() {
 
   const deleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Delete this prophecy?')) {
+    if (confirm('Delete this chat?')) {
       const res = await fetch(`/api/chat/sessions?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
@@ -384,7 +384,7 @@ function ChatInterface() {
               <div className="p-4 w-[320px]">
                 <button onClick={startNewChat} disabled={isNewChatLoading} className="w-full flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 text-primary py-3 rounded-2xl hover:bg-primary/20 transition-all font-bold text-sm">
                   {isNewChatLoading ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-                  NEW PROPHECY
+                  NEW CHAT
                 </button>
               </div>
 
@@ -433,7 +433,7 @@ function ChatInterface() {
                 <Sparkles className="text-primary" size={16} />
               </div>
               <div>
-                <h1 className="font-bold text-white text-sm">The Prophet</h1>
+                <h1 className="font-bold text-white text-sm">AI Assistant</h1>
                 <p className="text-[10px] text-zinc-500 font-mono">System Intel // God Mode</p>
               </div>
             </div>
@@ -532,7 +532,7 @@ function ChatInterface() {
             {isRecording ? (
               <div className="flex-1 flex flex-col items-center justify-center py-2 gap-2">
                 <VoiceVisualizer analyser={analyser} className="w-full" color="#6366f1" />
-                <p className="text-[10px] font-mono text-primary uppercase tracking-[0.2em] animate-pulse">The Prophet is listening...</p>
+                <p className="text-[10px] font-mono text-primary uppercase tracking-[0.2em] animate-pulse">The Assistant is listening...</p>
               </div>
             ) : isProcessingAudio ? (
               <div className="flex-1 flex items-center justify-center gap-3 py-4">

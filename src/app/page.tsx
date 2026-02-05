@@ -160,7 +160,7 @@ export default function Home() {
                className="h-10 px-4 md:h-16 md:px-8 rounded-2xl md:rounded-[2rem] bg-primary text-void flex items-center gap-3 card-shadow hover:opacity-90 transition-all font-black text-[10px] md:text-xs tracking-[0.2em]"
              >
                <Sparkles size={18} strokeWidth={2.5} />
-               <span>CONSULT PROPHET</span>
+               <span>ASK AI</span>
              </Link>
              <div className="w-10 h-10 md:w-16 md:h-16 rounded-2xl md:rounded-[2rem] bg-surface border border-border/50 flex items-center justify-center text-zinc-400 card-shadow">
                <Clock className="md:w-7 md:h-7" size={18} />
@@ -247,7 +247,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-zinc-300 line-clamp-1">{task.title}</p>
-                        <p className="text-[9px] font-bold text-zinc-600 uppercase italic leading-none mt-1.5">{task.projects?.name || 'Orbit'}</p>
+                         <p className="text-[9px] font-bold text-zinc-600 uppercase italic leading-none mt-1.5">{task.projects?.name || 'Inbox'}</p>
                       </div>
                     </div>
                     <span className="text-[10px] font-bold text-zinc-700 uppercase bg-void/50 px-2 py-1 rounded-lg border border-border/20">{task.est_duration_minutes}m</span>
@@ -275,8 +275,8 @@ export default function Home() {
               )}
             </div>
             <div className="text-sm font-medium text-zinc-500 leading-relaxed group-hover:text-zinc-300 transition-colors">
-              {adminTasks.length > 0 
-                ? `${adminTasks.length} micro-tasks aggregated. Click to process structural fragmentation.` 
+               {adminTasks.length > 0 
+                ? `${adminTasks.length} micro-tasks aggregated. Click to process fragmented subtasks.` 
                 : "System stability optimal. No fragmentation detected."}
             </div>
           </Link>

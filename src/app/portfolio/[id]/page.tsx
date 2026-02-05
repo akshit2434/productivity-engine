@@ -485,7 +485,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <div>
                   <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Cognitive Context</h3>
-                  <p className="text-[10px] text-zinc-600 font-medium">The Prophet uses this to understand project goals.</p>
+                  <p className="text-[10px] text-zinc-600 font-medium">The AI Assistant uses this to understand project goals.</p>
                 </div>
               </div>
               {!isEditingContext ? (
@@ -523,14 +523,14 @@ export default function ProjectDetailPage() {
                   className="w-full h-40 bg-void/50 border border-border/50 rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all font-medium text-zinc-300 resize-none"
                   value={contextInput}
                   onChange={(e) => setContextInput(e.target.value)}
-                  placeholder="Describe the high-level goals, stakeholders, and technical constraints of this boat..."
+                  placeholder="Describe the high-level goals, stakeholders, and technical constraints of this project..."
                 />
               ) : (
                 <div className="text-zinc-400 text-sm leading-relaxed">
                   {contextCard?.content ? (
                     <ReactMarkdown>{contextCard.content}</ReactMarkdown>
                   ) : (
-                    <p className="italic text-zinc-600">No context provided. The Prophet is operating in the dark. Add some goals to improve intelligence.</p>
+                    <p className="italic text-zinc-600">No context provided. The Assistant is operating in the dark. Add some goals to improve intelligence.</p>
                   )}
                 </div>
               )}

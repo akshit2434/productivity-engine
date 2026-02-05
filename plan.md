@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 **Status:** Phase 2 Complete (Deadlines, Advanced Editing, and AI Enrichment implemented).
-**Objective:** Build a high-performance, mobile-first productivity application designed for a power user managing multiple complex projects ("boats") simultaneously.
+**Objective:** Build a high-performance, mobile-first productivity application designed for a power user managing multiple complex projects ("projects") simultaneously.
 
 ---
 
@@ -10,17 +10,17 @@
 **Platform:** Next.js 15 (App Router). Responsive web app (PWA).
 
 ### **Sitemap:**
-1. **Dashboard (Syllabus)** – The execution view (Implemented).
-2. **Portfolio (Boats)** – High-level project health tracking (Implemented).
-3. **The Prophet (Chat)** – "God Mode" AI Assistant (Implemented).
+1. **Dashboard** – The execution view (Implemented).
+2. **Projects** – High-level project health tracking (Implemented).
+3. **AI Assistant (Chat)** – "God Mode" AI Assistant (Implemented).
 4. **Task Detail** – Enrichment with notes and subtasks (Implemented).
-5. **Strategy Logs (Notes)** – Standalone AI-enhanced knowledge base (Implemented).
+5. **Notes** – Standalone AI-enhanced knowledge base (Implemented).
 
 ---
 
 ## 3. Core Functional Logic (Implemented)
 
-### **A. The Sorting Algorithm (The "Syllabus" Logic)**
+### **A. The Sorting Algorithm (The "Dashboard" Logic)**
 `Score = (Tier Weight) × (Days Since Last Touch / Decay Threshold)^1.5 × (Context Multiplier)`
 - **Tier Weights:** 1 (2.0), 2 (1.5), 3 (1.0), 4 (0.5).
 - **Deadline Override:** Tasks due within 24h are forced to the top.
@@ -33,11 +33,11 @@ Projects track `last_touched_at`. If the gap exceeds `decay_threshold_days`, the
 ## 4. Pending Roadmap: Phase 3 (Cognitive Resonance)
 
 ### **1. Proactive Maintenance**
-- [ ] **Decay Notifications**: Implement background jobs (or simple triggers) for the Prophet to alert the user about critical "Boat" decay.
+- [ ] **Decay Notifications**: Implement background jobs (or simple triggers) for the AI Assistant to alert the user about critical project decay.
 - [ ] **Dynamic KPI Suggestions**: AI should suggest new KPIs based on task completion patterns.
 
 ### **2. Execution Sprints**
-- [ ] **"Admin Hour" Mode**: Prophet suggests batching all <10m tasks into a single focused sprint.
+- [ ] **"Admin Hour" Mode**: Assistant suggests batching all <10m tasks into a single focused sprint.
 - [ ] **Pomodoro Integration**: Sync chat status with a timer for Deep Work sessions.
 
 ---

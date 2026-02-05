@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { label: "History", href: "/history", icon: List },
   { label: "Projects", href: "/portfolio", icon: FolderOpen },
   { label: "Analytics", href: "/review", icon: BarChart3 },
-  { label: "Prophet", href: "/chat", icon: Sparkles },
+  { label: "Assistant", href: "/chat", icon: Sparkles },
 ];
 
 import { motion, AnimatePresence } from "framer-motion";

@@ -30,5 +30,5 @@
 - [ ] Upgrade Markdown renderer with interactive anchors and checkboxes <!-- id: 20 -->
 
 ## Phase 5: Polish & Contextual AI <!-- id: 21 -->
-- [ ] Implement "Contextual Prophet" (Scoped Note Chat) <!-- id: 22 -->
+- [ ] Implement "Contextual Assistant" (Scoped Note Chat) <!-- id: 22 -->
 - [ ] Final UI/UX polish and stabilization <!-- id: 23 -->

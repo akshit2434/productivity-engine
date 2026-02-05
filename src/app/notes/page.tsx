@@ -81,7 +81,7 @@ export default function NotesPage() {
           <div>
             <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-1">Knowledge Archive</p>
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-              Strategy Logs
+              Notes
             </h1>
           </div>
           <button 
@@ -90,7 +90,7 @@ export default function NotesPage() {
             className="h-14 px-8 rounded-2xl bg-primary text-void flex items-center justify-center gap-3 card-shadow hover:opacity-90 transition-all font-black text-xs tracking-[0.2em]"
           >
             {createMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} strokeWidth={3} />}
-            <span>INITIALIZE LOG</span>
+            <span>INITIALIZE NOTE</span>
           </button>
         </div>
       </header>
@@ -177,7 +177,7 @@ export default function NotesPage() {
               onClick={() => createMutation.mutate()}
               className="mt-8 text-primary hover:underline text-[10px] font-black uppercase tracking-[0.2em]"
             >
-              Start Strategic Dump
+              Start Note Dump
             </button>
           </div>
         </div>

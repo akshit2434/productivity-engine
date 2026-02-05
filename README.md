@@ -17,21 +17,22 @@ We have moved away from "Industrial Zen" toward a **High-Performance Minimalism*
 
 ### Key Concepts
 
-#### Projects as "Boats"
+#### Projects
 Each project is a persistent entity requiring maintenance:
 - **Tier 1-4:** Prioritization level (1 = Urgent, 4 = Maintenance).
 - **Decay Threshold:** The heartbeat of the system. Defines how often a project needs touching before it "rots."
 - **KPIs:** Track real-world impact metrics, not just "tasks completed."
+- **Rejuvenation:** Completing tasks "rejuvenates" project health, preventing decay.
 
-#### The Syllabus (The "Execution" Algorithm)
-The home screen is a **Syllabus**—a curated list of what to execute *next*, calculated dynamically:
+#### The Dashboard (The "Execution" Algorithm)
+The home screen is a curated list of what to execute *next*, calculated dynamically:
 `Score = (Tier Weight) × (Days Since Last Touch / Decay Threshold) × (Context Multiplier)`
 
 - **Filters:** By Time Available (15m, 30m, 1h) and Energy Mode (**Deep Work**, **Creative**, **Low Energy**, **Admin**).
 - **Deadlines:** Integrated "Mission Critical" logic for tasks due within 24h.
 - **Zero-Delay Sync:** Powered by Supabase Realtime & TanStack Query for instant feedback.
 
-#### Strategy Logs (Knowledge Base)
+#### Strategy & Notes (Knowledge Base)
 A dedicated secure archive for strategic dumps, meeting notes, and project brainstorming.
 - **Markdown-First:** Full rich-text editing with a distraction-free interface.
 - **AI Refinement:** "Refine" button to restructure brain dumps into clean, actionable intelligence.
@@ -50,7 +51,7 @@ A dedicated secure archive for strategic dumps, meeting notes, and project brain
 
 ### Key Modules
 - **`src/lib/engine.ts`**: The urgency scoring algorithm.
-- **`src/app/api/chat/route.ts`**: The Prophet's "God Mode" interface.
+- **`src/app/api/chat/route.ts`**: The AI Assistant's "God Mode" interface.
 - **`src/hooks/useTaskFulfillment.ts`**: Centralized logic for task completion and project health.
 
 ---
@@ -58,8 +59,8 @@ A dedicated secure archive for strategic dumps, meeting notes, and project brain
 ## 3. AI & Voice Integration
 The productivity engine is managed by an active **Intelligence Partner**.
 
-- **The Prophet**: A high-capability AI Assistant with "God Mode" access to the engine's database. It can create tasks, manage "Boats," and analyze performance trends.
-- **Quick Capture**: "Record, Confirm, Done." Voice dumps are parsed into structured JSON by the Prophet.
+- **AI Assistant**: A high-capability Assistant with "God Mode" access to the engine's database. It can create tasks, manage projects, and analyze performance trends.
+- **Quick Capture**: "Record, Confirm, Done." Voice dumps are parsed into structured JSON by the AI.
 - **Enrichment**: AI-powered transcription for task notes and automated subtask generation.
 
 ---
@@ -83,7 +84,7 @@ cp .env.example .env.local
 # Developer Handover
 For the current Phase 2 roadmap and technical architecture details, please refer to:
 - [plan.md](./plan.md) (PRD & Future Logic)
-- [ai_assistant_spec.md](./ai_assistant_spec.md) (The Prophet & Voice Design)
+- [ai_assistant_spec.md](./ai_assistant_spec.md) (AI Assistant & Voice Design)
 
 # Run Development Server
 pnpm dev

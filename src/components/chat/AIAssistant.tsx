@@ -10,7 +10,7 @@ import AIChart from './AIChart';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-export function ProphetAssistant() {
+export function AIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -23,8 +23,8 @@ export function ProphetAssistant() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: 'I am the Prophet. State your objective or inquire about your momentum.',
-        parts: [{ type: 'text', text: 'I am the Prophet. State your objective or inquire about your momentum.' }],
+        content: 'I am your Assistant. State your objective or inquire about your momentum.',
+        parts: [{ type: 'text', text: 'I am your Assistant. State your objective or inquire about your momentum.' }],
       } as any,
     ],
   });
@@ -87,7 +87,7 @@ export function ProphetAssistant() {
                     <Sparkles className="text-primary" size={20} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-extrabold text-white tracking-tight">The Prophet</h2>
+                    <h2 className="text-lg font-extrabold text-white tracking-tight">AI Assistant</h2>
                     <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">System Intel // &quot;God Mode&quot;</p>
                   </div>
                 </div>
@@ -185,7 +185,7 @@ export function ProphetAssistant() {
                   <div className="flex-1 bg-surface-lighter border border-border/30 rounded-2xl px-4 flex items-center focus-within:border-primary/50 transition-all card-shadow">
                     <input 
                       type="text"
-                      placeholder="Ask the Prophet..."
+                      placeholder="Ask the Assistant..."
                       className="flex-1 bg-transparent border-none outline-none py-4 text-sm text-zinc-200 placeholder:text-zinc-700 font-medium"
                       value={input}
                       onChange={handleInputChange}

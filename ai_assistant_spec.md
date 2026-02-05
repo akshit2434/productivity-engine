@@ -4,7 +4,7 @@
 The goal is to elevate the "Productivity Engine" from a static tool to an active **Intelligence Partner**. This involves three distinct interaction modes:
 1.  **Fast Voice Capture**: A sleek, transactional voice interface for quick brain dumps.
 2.  **Task Enrichment (Notes & Subtasks)**: Deepening the context of tasks with voice notes, descriptions, and checklists, fully accessible by the AI.
-3.  **"The Prophet" (Deep Assistant)**: A full-featured, persistent chat interface acting as a "General Manager."
+3.  **AI Assistant (Deep Assistant)**: A full-featured, persistent chat interface acting as a "General Manager."
 
 ---
 
@@ -36,21 +36,21 @@ The goal is to elevate the "Productivity Engine" from a static tool to an active
 *   **Subtasks/Checklists:**
     *   Toggle-able checklist items nested within a parent task.
 *   **AI Integration:**
-    *   The Prophet can read all notes/subtasks via `get_task_details`.
+    *   The Assistant can read all notes/subtasks via `get_task_details`.
 
 ---
 
-## 4. Feature 3: "The Prophet" [COMPLETED - VERSION 1.0]
+## 4. Feature 3: AI Assistant [COMPLETED - VERSION 1.0]
 **Design Philosophy:** A semi-autonomous agent that understands "Entropy." It has "God Mode" access to the app's data.
 
 ### System Prompt & Personality (The "God Prompt")
-*   **Identity:** "The Prophet," a non-chalant, stoic intelligence.
-*   **Core Concepts:** Understands "Boats" (Projects) and "Decay" (Entropy).
+*   **Identity:** AI Assistant, a non-chalant, stoic intelligence.
+*   **Core Concepts:** Understands Projects and "Decay" (Entropy).
 *   **Persistence:** Conversation history, tool calls, and results are persisted in `chat_messages`.
 
 ### Tool Registry (Current Capabilities)
 *   **`create_task` / `update_task` / `delete_task`**: Full task lifecycle management.
-*   **`create_project` / `delete_project`**: Manage project containers (Boats).
+*   **`create_project` / `delete_project`**: Manage project containers.
 *   **`list_tasks` / `get_projects`**: Real-time data retrieval.
 *   **`get_analytics` / `generate_chart`**: Visualizing productivity trends and entropy.
 *   **`add_note` / `add_subtask` / `toggle_subtask`**: Deepening task context.
@@ -60,7 +60,7 @@ The goal is to elevate the "Productivity Engine" from a static tool to an active
 ## 5. Next Steps: Phase 3 (Cognitive Resonance)
 
 ### 1. Proactive Health Checks
-- Prophet should proactively message the user if a Boat is decaying.
+- AI Assistant should proactively message the user if a project is decaying.
 
 ### 2. Multi-Task Batching
 - AI should suggest batching "Shallow" tasks into 30m sprints.

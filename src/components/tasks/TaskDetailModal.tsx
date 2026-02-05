@@ -524,7 +524,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                 activeTab === "subtasks" ? "text-primary" : "text-zinc-600 hover:text-zinc-400"
               )}
             >
-              Structural Fragments {subtasks.length > 0 && `(${subtasks.length})`}
+              Subtasks {subtasks.length > 0 && `(${subtasks.length})`}
               {activeTab === "subtasks" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: projectColor }} />}
             </button>
             <button 
@@ -534,7 +534,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                 activeTab === "strategize" ? "text-primary" : "text-zinc-600 hover:text-zinc-400"
               )}
             >
-              Intelligence Logs {linkedNotes.length > 0 && `(${linkedNotes.length})`}
+              Notes {linkedNotes.length > 0 && `(${linkedNotes.length})`}
               {activeTab === "strategize" && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: projectColor }} />}
             </button>
           </div>
@@ -547,7 +547,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                             {isEditingNote ? <Edit3 size={10} /> : <Eye size={10} />}
-                            {isEditingNote ? "Editor Mode" : "Intelligence Preview"}
+                            {isEditingNote ? "Editor Mode" : "Note Preview"}
                         </span>
                         {updateTaskMutation.isPending && (
                             <span className="text-[9px] font-bold text-primary/50 uppercase tracking-widest flex items-center gap-1 animate-pulse">
@@ -715,7 +715,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                   ))}
                   {subtasks.length === 0 && !isLoadingSubtasks && (
                     <div className="py-12 text-center text-zinc-700 text-[10px] font-bold uppercase tracking-[0.2em] italic">
-                      Structural integrity optimal - no fragments detected
+                      Structural integrity optimal - no subtasks detected
                     </div>
                   )}
                 </div>
@@ -728,7 +728,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                         className="w-full h-14 bg-primary/10 border border-dashed border-primary/30 rounded-2xl flex items-center justify-center gap-3 text-primary hover:bg-primary/20 transition-all group"
                     >
                         {createNoteMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Initalize Intelligence Log</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Initalize Note</span>
                     </button>
 
                     <div className="space-y-3">
@@ -754,7 +754,7 @@ export function TaskDetailModal({ task, isOpen, onClose }: TaskDetailModalProps)
                         ))}
                         {linkedNotes.length === 0 && !isLoadingNotes && (
                             <div className="py-12 text-center text-zinc-700 text-[10px] font-bold uppercase tracking-[0.2em] italic">
-                                Tactical archive vacant - no logs detected
+                                Tactical archive vacant - no notes detected
                             </div>
                         )}
                     </div>
