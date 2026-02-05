@@ -222,10 +222,33 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   };
 
   React.useEffect(() => {
-    if (!isRecording && audioBlob && isAiEnabled) {
-      handleProcess(audioBlob);
+    if (!isRecording && audioBlob) {
+      if (captureMode === 'task' && isAiEnabled) {
+        handleProcess(audioBlob);
+      } else if (captureMode === 'thought') {
+        handleThoughtVoice(audioBlob);
+      }
     }
-  }, [isRecording, audioBlob, isAiEnabled]);
+  }, [isRecording, audioBlob, isAiEnabled, captureMode]);
+
+  const handleThoughtVoice = async (blob: Blob) => {
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", blob);
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Transcription failed");
+      const data = await res.json();
+      setThoughtInput(prev => prev ? prev + " " + data.text : data.text);
+    } catch (error) {
+      console.error("Thought voice error:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleManualSubmit = () => {
     addTaskMutation.mutate({
@@ -308,25 +331,52 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                   exit={{ opacity: 0, scale: 0.98 }}
                   className="space-y-4"
                 >
-                  <textarea
-                    autoFocus
-                    className="w-full h-36 bg-void border border-amber-500/20 rounded-2xl p-5 font-medium text-sm focus:ring-1 focus:ring-amber-500 outline-none resize-none placeholder:text-zinc-800 transition-all"
-                    placeholder="Dump your thought here. No AI, no parsing. Just capture it."
-                    value={thoughtInput}
-                    onChange={(e) => setThoughtInput(e.target.value)}
-                  />
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => addThoughtMutation.mutate(thoughtInput)}
-                    disabled={!thoughtInput.trim() || addThoughtMutation.isPending}
-                    className="w-full bg-amber-500 text-void h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_20px_rgba(245,158,11,0.2)]"
-                  >
-                    {addThoughtMutation.isPending ? (
-                      <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
-                    ) : (
-                      <>Capture Thought <MessageCircle size={14} /></>
+                  {isRecording ? (
+                    <div className="w-full h-36 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-amber-500/5 animate-pulse" />
+                      <VoiceVisualizer analyser={analyser} className="z-10 w-full" color="#f59e0b" />
+                      <p className="text-[10px] font-mono text-amber-500 uppercase tracking-[0.2em] z-10 font-bold">Listening...</p>
+                    </div>
+                  ) : (
+                    <textarea
+                      autoFocus
+                      className="w-full h-36 bg-void border border-amber-500/20 rounded-2xl p-5 font-medium text-sm focus:ring-1 focus:ring-amber-500 outline-none resize-none placeholder:text-zinc-800 transition-all"
+                      placeholder="Dump your thought here. No AI, no parsing. Just capture it."
+                      value={thoughtInput}
+                      onChange={(e) => setThoughtInput(e.target.value)}
+                    />
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isProcessing}
+                      className={cn(
+                        "w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center transition-all",
+                        isRecording 
+                          ? "bg-red-500/10 border border-red-500/20 text-red-500" 
+                          : "bg-surface border border-border text-amber-500 hover:bg-amber-500/10"
+                      )}
+                    >
+                      {isRecording ? <Square size={20} /> : <Mic size={24} />}
+                    </motion.button>
+                    
+                    {!isRecording && (
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => addThoughtMutation.mutate(thoughtInput)}
+                        disabled={!thoughtInput.trim() || addThoughtMutation.isPending || isProcessing}
+                        className="flex-1 bg-amber-500 text-void h-14 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_20px_rgba(245,158,11,0.2)]"
+                      >
+                        {addThoughtMutation.isPending || (isProcessing && !isRecording) ? (
+                          <div className="w-4 h-4 border-2 border-void border-t-transparent animate-spin rounded-full" />
+                        ) : (
+                          <>Capture Thought <MessageCircle size={14} /></>
+                        )}
+                      </motion.button>
                     )}
-                  </motion.button>
+                  </div>
                   <p className="text-[10px] text-zinc-600 text-center font-medium">This will appear in your Catch Up feed.</p>
                 </motion.div>
               ) : !isAiEnabled ? (
