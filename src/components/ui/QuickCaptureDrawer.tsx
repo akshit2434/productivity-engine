@@ -248,12 +248,14 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       });
       if (!res.ok) throw new Error("Thought parsing failed");
       const data = await res.json();
-      setThoughtInput(prev => prev ? prev + " " + data.text : data.text);
+      
+      // Auto-save the thought directly (no intermediate text step)
+      addThoughtMutation.mutate(data.text);
     } catch (error) {
       console.error("Thought voice error:", error);
-    } finally {
       setIsProcessing(false);
     }
+    // Note: setIsProcessing(false) is handled by addThoughtMutation's onSuccess/onError via resetState
   };
 
   const handleManualSubmit = () => {
