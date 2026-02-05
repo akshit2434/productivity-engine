@@ -24,7 +24,7 @@ import { mapTaskData } from "@/lib/engine";
 export function Navigation() {
   const pathname = usePathname();
   const [showCatchUp, setShowCatchUp] = useState(false);
-  if (pathname === '/chat') return null;
+  const isChat = pathname === '/chat';
   
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -39,7 +39,8 @@ export function Navigation() {
         .eq('is_read', false);
       return count || 0;
     },
-    refetchInterval: 30000 // Poll every 30 seconds
+    refetchInterval: 30000, // Poll every 30 seconds
+    enabled: !isChat
   });
 
   const handlePrefetch = (href: string) => {
@@ -93,6 +94,8 @@ export function Navigation() {
       });
     }
   };
+
+  if (isChat) return null;
 
   return (
     <>
