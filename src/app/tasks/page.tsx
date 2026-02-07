@@ -12,44 +12,30 @@ import { Task } from "@/lib/engine";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { db } from "@/lib/db";
+import { processOutbox } from "@/lib/sync";
+
 export default function TasksPage() {
   const [filter, setFilter] = useState("");
   const supabase = createClient();
   const { completeTask } = useTaskFulfillment();
   const queryClient = useQueryClient();
-
-  // 1. Fetch Tasks Query
+ 
+  // 1. Fetch Tasks Query from Local DB
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks', 'active'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(`
-          id,
-          title,
-          description,
-          project_id,
-          state,
-          due_date,
-          waiting_until,
-          est_duration_minutes,
-          energy_tag,
-          blocked_by_id,
-          recurrence_interval_days,
-          last_touched_at,
-          created_at,
-          waiting_until,
-          projects(name, tier, decay_threshold_days),
-          subtasks(is_completed)
-        `)
-        .eq('state', 'Active')
-        .order('created_at', { ascending: false });
+      const allTasks = await db.tasks
+        .where('state')
+        .equals('Active')
+        .toArray();
       
-      if (error) {
-        console.error('[Tasks Query Error]', error);
-      }
+      const sorted = allTasks.sort((a, b) => b.created_at.localeCompare(a.created_at));
       
-      return (data || []).map(mapTaskData);
+      return await Promise.all(sorted.map(async (t) => {
+        const projects = t.project_id ? await db.projects.get(t.project_id) : null;
+        return mapTaskData({ ...t, projects });
+      }));
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -60,7 +46,9 @@ export default function TasksPage() {
   // 2. Mutations
   const deleteMutation = useMutation<void, Error, string, { previousTasks: any[] | undefined }>({
     mutationFn: async (id: string) => {
-      await supabase.from('tasks').delete().eq('id', id);
+      await db.tasks.delete(id);
+      await db.recordAction('tasks', 'delete', { id });
+      processOutbox().catch(() => {});
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', 'active'] });
@@ -105,7 +93,10 @@ export default function TasksPage() {
 
   const updateStatusMutation = useMutation<void, Error, { id: string, newState: string }, { previousTasks: any[] | undefined }>({
     mutationFn: async ({ id, newState }) => {
-      await supabase.from('tasks').update({ state: newState }).eq('id', id);
+      const update = { state: newState as any, updated_at: new Date().toISOString() };
+      await db.tasks.update(id, update);
+      await db.recordAction('tasks', 'update', { id, ...update });
+      processOutbox().catch(() => {});
     },
     onMutate: async ({ id, newState }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', 'active'] });
@@ -122,7 +113,10 @@ export default function TasksPage() {
 
   const recurrenceMutation = useMutation({
     mutationFn: async ({ id, days }: { id: string, days: number }) => {
-      await supabase.from('tasks').update({ recurrence_interval_days: days }).eq('id', id);
+      const update = { recurrence_interval_days: days, updated_at: new Date().toISOString() };
+      await db.tasks.update(id, update);
+      await db.recordAction('tasks', 'update', { id, ...update });
+      processOutbox().catch(() => {});
     },
     onMutate: async ({ id, days }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', 'active'] });

@@ -23,6 +23,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { getProjectColor } from "@/lib/colors";
 import { useScroll, useTransform } from "framer-motion";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+
+import { db } from "@/lib/db";
+import { processOutbox } from "@/lib/sync";
 
 interface NoteEditorProps {
   note: Note;
@@ -30,10 +34,10 @@ interface NoteEditorProps {
 }
 
 export function NoteEditor({ note, onClose }: NoteEditorProps) {
-  const supabase = createClient();
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll({ container: scrollRef });
+  const isOnline = useOnlineStatus();
 
   // Mobile optimization: iOS-style physical header transition
   const headerHeight = useTransform(scrollY, [0, 100], ["180px", "64px"]);
@@ -58,12 +62,11 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     setProjectId(note.project_id);
   }, [note.id, note.title, note.content, note.project_id]);
 
-  // Fetch Projects for selector
+  // Fetch Projects for selector from local DB
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data } = await supabase.from('projects').select('id, name, color');
-      return data || [];
+      return await db.projects.toArray();
     },
   });
 
@@ -72,12 +75,13 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<Note>) => {
-      const { data, error } = await supabase
-        .from("notes")
-        .update(updates)
-        .eq("id", note.id);
-      if (error) throw error;
-      return data;
+      // Dexie doesn't like null in updates if they don't match the schema perfectly
+      const cleanUpdates: any = { ...updates, updated_at: new Date().toISOString() };
+      if (cleanUpdates.project_id === null) cleanUpdates.project_id = undefined;
+      
+      await db.notes.update(note.id, cleanUpdates);
+      await db.recordAction("notes", "update", { id: note.id, ...cleanUpdates });
+      processOutbox().catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
@@ -86,8 +90,9 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("notes").delete().eq("id", note.id);
-      if (error) throw error;
+      await db.notes.delete(note.id);
+      await db.recordAction("notes", "delete", { id: note.id });
+      processOutbox().catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
@@ -257,11 +262,15 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
           <div className="flex gap-3">
             <button 
               onClick={handleRefine}
-              disabled={isRefining || !content}
-              className="h-8 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all px-4 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 disabled:opacity-30 group"
+              disabled={isRefining || !content || !isOnline}
+              className={cn(
+                "h-8 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all px-4 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 disabled:opacity-30 group",
+                !isOnline && "cursor-not-allowed"
+              )}
+              title={isOnline ? "Refine with AI" : "AI refinement requires connection"}
             >
               <Sparkles size={12} className={cn(isRefining && "animate-spin")} />
-              Refine
+              {isOnline ? "Refine" : "Offline"}
             </button>
             {isEditing && (
               <button 

@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Send, Sparkles, Check, Edit2, Mic, Square, Zap, FileText, MessageCircle } from "lucide-react";
+import { X, Send, Sparkles, Check, Edit2, Mic, Square, Zap, FileText, MessageCircle, WifiOff } from "lucide-react";
 import { cn, parseDuration } from "@/lib/utils";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceVisualizer } from "./VoiceVisualizer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import { db } from "@/lib/db";
+import { processOutbox } from "@/lib/sync";
 
 interface QuickCaptureDrawerProps {
   isOpen: boolean;
@@ -15,6 +18,7 @@ interface QuickCaptureDrawerProps {
 }
 
 export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps) {
+  const isOnline = useOnlineStatus();
   // Capture modes: 'task' (AI or Manual), 'thought' (silent dump to notes)
   const [captureMode, setCaptureMode] = useState<'task' | 'thought'>('task');
   const [isAiEnabled, setIsAiEnabled] = useState(false);
@@ -37,17 +41,16 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
   const supabase = createClient();
   const queryClient = useQueryClient();
 
-  // 1. Fetch Projects Query
+  // 1. Fetch Projects Query from local DB
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data } = await supabase.from('projects').select('id, name');
-      return data || [];
+      return await db.projects.toArray();
     },
     enabled: isOpen
   });
 
-  // 2. Add Task Mutation
+  // 2. Add Task Mutation using Dexie
   const addTaskMutation = useMutation({
     mutationFn: async (result: any) => {
       if (!result) return;
@@ -55,43 +58,53 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
 
       // Handle "None" or "Inbox" project
       if (finalProjectId === "NONE") {
-        finalProjectId = null;
+        finalProjectId = undefined;
       }
 
       if (!finalProjectId && result.project && result.project !== "None" && result.project !== "NONE") {
-        const { data: existingProj } = await supabase
-          .from('projects')
-          .select('id')
-          .eq('name', result.project)
-          .maybeSingle();
+        // Find existing project by name in Dexie
+        const existingProj = await db.projects.where('name').equals(result.project).first();
 
         if (existingProj) {
           finalProjectId = existingProj.id;
         } else {
-          const { data: newProj, error: projError } = await supabase
-            .from('projects')
-            .insert({ name: result.project, tier: 3 })
-            .select()
-            .single();
+          // Create new project in Dexie
+          const newProj = {
+            id: crypto.randomUUID(),
+            name: result.project,
+            tier: 3,
+            decay_threshold_days: 15,
+            last_touched_at: new Date().toISOString(),
+            kpi_value: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
           
-          if (projError) throw projError;
-          finalProjectId = newProj?.id;
+          await db.projects.add(newProj);
+          await db.recordAction('projects', 'insert', newProj);
+          finalProjectId = newProj.id;
           queryClient.invalidateQueries({ queryKey: ['projects'] });
         }
       }
 
-      const { error: taskError } = await supabase.from('tasks').insert({
+      const newTask = {
+        id: crypto.randomUUID(),
         title: result.task,
         description: result.description || null,
         project_id: finalProjectId || null,
-        est_duration_minutes: parseDuration(result.duration?.toString()) || null,
+        est_duration_minutes: parseDuration(result.duration?.toString()) || 30,
         energy_tag: result.energy || 'Shallow',
         recurrence_interval_days: result.recurrence || null,
         due_date: result.dueDate || null,
-        state: 'Active'
-      });
+        state: 'Active' as const,
+        last_touched_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      if (taskError) throw taskError;
+      await db.tasks.add(newTask);
+      await db.recordAction('tasks', 'insert', newTask);
+      processOutbox().catch(() => {});
     },
     onMutate: async (newResult) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', 'active'] });
@@ -148,16 +161,20 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
     });
   };
 
-  // 3. Add Thought Mutation (Silent Dump)
+  // 3. Add Thought Mutation using Dexie
   const addThoughtMutation = useMutation({
     mutationFn: async (content: string) => {
-      const { error } = await supabase.from('notes').insert({
+      const newNote = {
+        id: crypto.randomUUID(),
         title: 'Quick Thought',
         content,
-        type: 'thought',
-        is_read: false
-      });
-      if (error) throw error;
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      await db.notes.add(newNote);
+      await db.recordAction("notes", "insert", newNote);
+      processOutbox().catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
@@ -166,6 +183,13 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
       resetState();
     }
   });
+
+  // Force manual mode if offline
+  React.useEffect(() => {
+    if (!isOnline && isAiEnabled) {
+      setIsAiEnabled(false);
+    }
+  }, [isOnline, isAiEnabled]);
 
   const { isRecording, startRecording, stopRecording, analyser, audioBlob } = useVoiceRecorder();
 
@@ -319,20 +343,22 @@ export function QuickCaptureDrawer({ isOpen, onClose }: QuickCaptureDrawerProps)
                   <MessageCircle size={10} />
                   Thought
                 </button>
-                {captureMode === 'task' && (
-                  <button 
-                    onClick={() => setIsAiEnabled(!isAiEnabled)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-tight transition-all",
-                      isAiEnabled 
+                <button 
+                  onClick={() => setIsAiEnabled(!isAiEnabled)}
+                  disabled={!isOnline}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-tight transition-all",
+                    !isOnline 
+                      ? "bg-void border border-border/5 text-zinc-800 cursor-not-allowed" 
+                      : isAiEnabled 
                         ? "bg-primary text-void shadow-[0_0_15px_rgba(99,102,241,0.3)]" 
                         : "bg-void border border-border text-zinc-500 hover:text-primary hover:border-primary/30"
-                    )}
-                  >
-                    {isAiEnabled ? <Zap size={10} fill="currentColor" /> : <Sparkles size={10} />}
-                    {isAiEnabled ? "AI Mode" : "Manual"}
-                  </button>
-                )}
+                  )}
+                  title={isOnline ? "Toggle AI Parsing" : "AI features require connection"}
+                >
+                  {!isOnline ? <WifiOff size={10} /> : isAiEnabled ? <Zap size={10} fill="currentColor" /> : <Sparkles size={10} />}
+                  {!isOnline ? "Offline" : isAiEnabled ? "AI Mode" : "Manual"}
+                </button>
                 <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-1">
                   <X size={18} />
                 </button>

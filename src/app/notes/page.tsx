@@ -19,6 +19,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+import { db } from "@/lib/db";
+import { processOutbox } from "@/lib/sync";
+
 export default function NotesPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -30,36 +33,42 @@ export default function NotesPage() {
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ["notes"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("notes")
-        .select("*, projects(name, color)")
-        .order("updated_at", { ascending: false });
-      if (error) throw error;
-      return data as Note[];
+      const allNotes = await db.notes.toArray();
+      const sorted = allNotes.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+      
+      return await Promise.all(sorted.map(async (n) => {
+        const project = n.project_id ? await db.projects.get(n.project_id) : null;
+        return { 
+          ...n, 
+          projects: project ? { name: project.name, color: project.color || "" } : undefined 
+        } as Note;
+      }));
     },
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name, color");
-      return data || [];
+      return await db.projects.orderBy('name').toArray();
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase
-        .from("notes")
-        .insert({
-          title: "New Strategy",
-          content: "",
-          project_id: selectedProjectId === "all" ? null : selectedProjectId,
-        })
-        .select("*, projects(name, color)")
-        .single();
-      if (error) throw error;
-      return data as Note;
+      const newNote = {
+        id: crypto.randomUUID(),
+        title: "New Strategy",
+        content: "",
+        project_id: selectedProjectId === "all" ? undefined : selectedProjectId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      await db.notes.add(newNote);
+      await db.recordAction("notes", "insert", newNote);
+      processOutbox().catch(() => {});
+      
+      return newNote as any;
     },
     onSuccess: (newNote) => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });

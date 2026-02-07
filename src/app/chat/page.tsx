@@ -6,10 +6,11 @@ import { DefaultChatTransport, UIMessage } from 'ai';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 import { 
   Sparkles, Send, Bot, User, Loader2, Plus, Search, 
   MessageSquare, Trash2, ChevronLeft, Menu, Home, BarChart3,
-  Mic, Square
+  Mic, Square, WifiOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -349,6 +350,8 @@ function ChatInterface() {
     }
   }, [isRecording, audioBlob]);
 
+  const isOnline = useOnlineStatus();
+
   return (
     <div className="flex h-screen bg-void overflow-hidden">
       <AnimatePresence mode="wait">
@@ -436,7 +439,14 @@ function ChatInterface() {
               </div>
               <div>
                 <h1 className="font-bold text-white text-sm">AI Assistant</h1>
-                <p className="text-[10px] text-zinc-500 font-mono">System Intel // God Mode</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] text-zinc-500 font-mono">System Intel // God Mode</p>
+                  {!isOnline && (
+                    <span className="flex items-center gap-1 text-[8px] font-black bg-rose-500/10 text-rose-500 px-1.5 py-0.5 rounded border border-rose-500/20 uppercase tracking-widest animate-pulse">
+                      <WifiOff size={8} /> Offline
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -572,24 +582,30 @@ function ChatInterface() {
               <textarea 
                 ref={textareaRef}
                 rows={1}
-                placeholder="State your objective..." 
+                placeholder={isOnline ? "State your objective..." : "Waiting for connection... (AI limited)"}
                 value={input} 
                 onChange={handleInputChange} 
+                disabled={!isOnline}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleSubmit(e);
+                    if (isOnline) handleSubmit(e);
                   }
                 }} 
-                className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-white placeholder:text-zinc-600 font-medium resize-none overflow-y-auto custom-scrollbar max-h-[200px] leading-relaxed" 
+                className={cn(
+                  "flex-1 bg-transparent border-none outline-none px-6 py-4 text-white placeholder:text-zinc-600 font-medium resize-none overflow-y-auto custom-scrollbar max-h-[200px] leading-relaxed",
+                  !isOnline && "cursor-not-allowed opacity-50"
+                )}
               />
             )}
             
             <div className="flex gap-2 mb-1 mr-1">
               <button 
                 onClick={isRecording ? stopRecording : startRecording}
+                disabled={!isOnline}
                 className={cn(
                   "w-14 h-14 rounded-[2rem] flex items-center justify-center transition-all group",
+                  !isOnline ? "bg-void border border-border/5 text-zinc-800 cursor-not-allowed" :
                   isRecording 
                     ? "bg-red-500/10 border border-red-500/20 text-red-500" 
                     : "bg-void border border-border/10 text-primary hover:bg-white/5"
@@ -601,7 +617,7 @@ function ChatInterface() {
               {!isRecording && (
                 <button 
                   onClick={handleSubmit} 
-                  disabled={isLoading || !input.trim()} 
+                  disabled={isLoading || !input.trim() || !isOnline} 
                   className="w-14 h-14 bg-primary text-void rounded-[2rem] flex items-center justify-center hover:bg-primary/90 transition-all disabled:opacity-50 group hover:scale-105 active:scale-95 shrink-0"
                 >
                   <Send size={24} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />

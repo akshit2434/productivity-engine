@@ -17,6 +17,9 @@ import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { Task } from "@/lib/engine";
 
+import { db } from "@/lib/db";
+import { processOutbox } from "@/lib/sync";
+
 export default function Home() {
   const { mode, timeAvailable } = useUserStore();
   const { completeTask } = useTaskFulfillment();
@@ -24,36 +27,44 @@ export default function Home() {
   const queryClient = useQueryClient();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [projectFilters, setProjectFilters] = useState<string[]>([]);
-  // 1. Fetch Active Tasks Query
+  // 1. Fetch Active Tasks Query from Local DB
   const { data: allActive = [], isLoading: isTasksLoading } = useQuery({
     queryKey: ['tasks', 'active'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('tasks')
-        .select(`
-          id, title, description, project_id, due_date, est_duration_minutes, energy_tag,
-          last_touched_at, recurrence_interval_days, waiting_until,
-          projects(name, tier, decay_threshold_days, color),
-          subtasks(is_completed)
-        `)
-        .eq('state', 'Active')
-        .or(`waiting_until.is.null,waiting_until.lte.${new Date().toISOString()}`);
-      return (data || []).map(mapTaskData);
+      // Fetch tasks from local Dexie DB
+      const tasks = await db.tasks
+        .where('state')
+        .equals('Active')
+        .toArray();
+      
+      // Filter by waiting_until (Dexie doesn't support complex OR filters easily in 'where')
+      const now = new Date().toISOString();
+      const filtered = tasks.filter(t => !t.waiting_until || t.waiting_until <= now);
+
+      // Enhance with project data (Manual join since Dexie is NoSQL-style)
+      const enhanced = await Promise.all(filtered.map(async (t) => {
+        let projects = null;
+        if (t.project_id) {
+          projects = await db.projects.get(t.project_id);
+        }
+        // Subtasks count (simplified for now)
+        return mapTaskData({ ...t, projects });
+      }));
+
+      return enhanced;
     },
-    staleTime: 1000 * 60 * 5, // Keep fresh for 5 mins
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects', 'all'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('projects')
-        .select('id, name, tier, color')
-        .order('name', { ascending: true });
-      return data || [];
+      return await db.projects.orderBy('name').toArray();
     }
   });
 
+  // Keep view_prefs on Supabase for now as it's less critical for offline core loop
+  // and involves complex merging. We can move it later if needed.
   const { data: homePrefs } = useQuery({
     queryKey: ['view_prefs', 'home'],
     queryFn: async () => {
@@ -109,17 +120,21 @@ export default function Home() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const selectedTask = allActive.find(t => t.id === selectedTaskId);
 
-  // 2. Fetch Recently Completed Tasks Query
+  // 2. Fetch Recently Completed Tasks Query from Local DB
   const { data: completedToday = [] } = useQuery({
     queryKey: ['history', 'recent'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('tasks')
-        .select('*, projects(name)')
-        .eq('state', 'Done')
-        .order('updated_at', { ascending: false })
-        .limit(3);
-      return data || [];
+      const tasks = await db.tasks
+        .where('state')
+        .equals('Done')
+        .reverse()
+        .limit(3)
+        .toArray();
+      
+      return await Promise.all(tasks.map(async (t) => {
+        const projects = t.project_id ? await db.projects.get(t.project_id) : null;
+        return { ...t, projects };
+      }));
     }
   });
 
@@ -170,7 +185,9 @@ export default function Home() {
 
   const deleteMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      await supabase.from('tasks').delete().eq('id', taskId);
+      await db.tasks.delete(taskId);
+      await db.recordAction('tasks', 'delete', { id: taskId });
+      processOutbox().catch(() => {});
     },
     onMutate: async (taskId: string) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', 'active'] });

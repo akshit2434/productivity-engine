@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, List, FolderOpen, BarChart3, LogOut, Sparkles, Book, Star } from "lucide-react";
+import { Home, List, FolderOpen, BarChart3, LogOut, Sparkles, Book, Star, BookOpen, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { db } from "@/lib/db";
 
 const NAV_ITEMS = [
   { label: "Focus", href: "/", icon: Home },
-  { label: "Notes", href: "/notes", icon: Book },
+  { label: "Notes", href: "/notes", icon: FileText },
   { label: "History", href: "/history", icon: List },
+  { label: "Intel", href: "/docs", icon: BookOpen },
   { label: "Projects", href: "/portfolio", icon: FolderOpen },
   { label: "Analytics", href: "/review", icon: BarChart3 },
   { label: "Assistant", href: "/chat", icon: Sparkles },
@@ -92,6 +94,13 @@ export function Navigation() {
           return (data || []).map(mapTaskData);
         }
       });
+    } else if (href === "/docs") {
+      queryClient.prefetchQuery({
+        queryKey: ['documentation'],
+        queryFn: async () => {
+          return await db.documentation.toArray();
+        }
+      });
     }
   };
 
@@ -134,7 +143,7 @@ export function Navigation() {
         )}
       </AnimatePresence>
 
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-sm w-[90%] glass rounded-3xl p-1.5 card-shadow">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[95%] glass rounded-3xl p-1.5 card-shadow">
       <div className="flex items-center justify-between">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
