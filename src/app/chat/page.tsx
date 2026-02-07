@@ -18,6 +18,7 @@ import { VoiceVisualizer } from "@/components/ui/VoiceVisualizer";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import AIChart from '@/components/chat/AIChart';
 import AIWebSearchResults from '@/components/chat/AIWebSearchResults';
+import { BackgroundTasksPanel } from '@/components/chat/BackgroundTasksPanel';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -445,6 +446,11 @@ function ChatInterface() {
           >
             <Home size={20} />
           </Link>
+        </div>
+
+        {/* Background Tasks Panel */}
+        <div className="w-full max-w-4xl mx-auto px-6 md:px-12">
+          <BackgroundTasksPanel />
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-12 space-y-8 custom-scrollbar">

@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import AIChart from './AIChart';
 import AIWebSearchResults from './AIWebSearchResults';
+import { BackgroundTasksPanel } from './BackgroundTasksPanel';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -100,6 +101,11 @@ export function AIAssistant() {
                 </button>
               </div>
 
+              {/* Background Tasks - Sticky below header */}
+              <div className="px-6 md:px-8 border-b border-border/5">
+                <BackgroundTasksPanel />
+              </div>
+
               {/* Messages Area */}
               <div 
                 ref={scrollRef}
@@ -155,13 +161,13 @@ export function AIAssistant() {
 
                               if (toolName === 'search_web' || toolName === 'search web') {
                                 if (toolPart.state === 'output-available' || toolPart.state === 'result' || part.type === 'tool-result') {
-                                  const result = toolPart.output || toolPart.result;
+                                  const result = (toolPart.output || toolPart.result) as any;
                                   return (
                                     <AIWebSearchResults key={index} payload={result as { provider: string; query: string; keywords?: string[]; results: Array<{ id: number; title: string; url: string; source: string; snippet: string; publishedAt?: string }> }} compact />
                                   );
                                 }
                               }
-
+        
                               if (toolName === 'generate_chart') {
                                 if (toolPart.state === 'output-available' || toolPart.state === 'result' || part.type === 'tool-result') {
                                   const result = (toolPart.output || toolPart.result) as { 
