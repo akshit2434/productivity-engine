@@ -2,7 +2,12 @@
 
 import React, { useState } from "react";
 import { Plus } from "lucide-react";
-import { QuickCaptureDrawer } from "@/components/ui/QuickCaptureDrawer";
+import dynamic from "next/dynamic";
+
+const QuickCaptureDrawer = dynamic(
+  () => import("@/components/ui/QuickCaptureDrawer").then((mod) => mod.QuickCaptureDrawer),
+  { ssr: false }
+);
 
 export function QuickCaptureFAB() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -19,10 +24,12 @@ export function QuickCaptureFAB() {
         </button>
       </div>
       
-      <QuickCaptureDrawer 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
-      />
+      {isDrawerOpen && (
+        <QuickCaptureDrawer 
+          isOpen={isDrawerOpen} 
+          onClose={() => setIsDrawerOpen(false)} 
+        />
+      )}
     </>
   );
 }

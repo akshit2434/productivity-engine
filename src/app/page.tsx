@@ -356,7 +356,15 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {focusTasks.length > 0 ? (
+            {isLoading ? (
+               Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-surface/50 border border-border/10 rounded-3xl p-6 h-48 animate-pulse">
+                  <div className="w-20 h-2 bg-zinc-800 rounded-full mb-4" />
+                  <div className="w-full h-4 bg-zinc-800 rounded-full mb-2" />
+                  <div className="w-2/3 h-4 bg-zinc-800 rounded-full" />
+                </div>
+              ))
+            ) : focusTasks.length > 0 ? (
               focusTasks.map((task, index) => {
                 return (
                   <motion.div
@@ -388,7 +396,7 @@ export default function Home() {
                   </motion.div>
                 );
               })
-            ) : !isLoading && (
+            ) : (
               <div className="col-span-full text-center py-24 border border-dashed border-border rounded-3xl text-zinc-600 text-[10px] font-bold uppercase tracking-widest bg-surface/30">
                 All objectives synchronized
               </div>

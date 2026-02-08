@@ -1,17 +1,23 @@
-const CACHE_NAME = 'entropy-cache-v1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'entropy-cache-v2';
+const STATIC_ASSETS = [
     '/',
     '/manifest.json',
     '/web-app-manifest-192x192.png',
     '/web-app-manifest-512x512.png',
 ];
 
+// Patterns for assets that should be cache-first (static chunks, fonts, etc.)
+const CACHE_FIRST_PATTERNS = [
+    /\/_next\/static\//,
+    /\.(png|jpg|jpeg|gif|svg|ico)$/,
+    /\.(woff|woff2|ttf|otf|eot)$/,
+];
+
 // Install: Cache basic app shell
 self.addEventListener('install', (event) => {
-    console.log('[PWA] Service Worker installing...');
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
+            return cache.addAll(STATIC_ASSETS);
         })
     );
     self.skipWaiting();
@@ -19,7 +25,6 @@ self.addEventListener('install', (event) => {
 
 // Activate: Cleanup old caches
 self.addEventListener('activate', (event) => {
-    console.log('[PWA] Service Worker activating...');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
@@ -34,32 +39,46 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch: Stale-While-Revalidate strategy
+// Fetch strategies
 self.addEventListener('fetch', (event) => {
-    // Only cache GET requests
     if (event.request.method !== 'GET') return;
-
-    // Skip chrome-extension and other third-party requests
     if (!event.request.url.startsWith(self.location.origin)) return;
 
-    event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            const fetchPromise = fetch(event.request).then((networkResponse) => {
-                // Cache the new response
-                if (networkResponse && networkResponse.status === 200) {
-                    const cacheCopy = networkResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, cacheCopy);
-                    });
-                }
-                return networkResponse;
-            }).catch((err) => {
-                console.log('[PWA] Fetch failed, serving from cache if available');
-                return cachedResponse;
-            });
+    const url = new URL(event.request.url);
+    const isCacheFirst = CACHE_FIRST_PATTERNS.some(pattern => pattern.test(url.pathname));
 
-            // Serve from cache if available, otherwise wait for network
-            return cachedResponse || fetchPromise;
-        })
-    );
+    if (isCacheFirst) {
+        // Cache-First with Network Fallback & Update
+        event.respondWith(
+            caches.match(event.request).then((cachedResponse) => {
+                if (cachedResponse) return cachedResponse;
+
+                return fetch(event.request).then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const cacheCopy = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, cacheCopy);
+                        });
+                    }
+                    return networkResponse;
+                });
+            })
+        );
+    } else {
+        // Stale-While-Revalidate for App Shell / API
+        event.respondWith(
+            caches.match(event.request).then((cachedResponse) => {
+                const fetchPromise = fetch(event.request).then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const cacheCopy = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, cacheCopy);
+                        });
+                    }
+                    return networkResponse;
+                });
+                return cachedResponse || fetchPromise;
+            })
+        );
+    }
 });

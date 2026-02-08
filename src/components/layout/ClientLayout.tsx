@@ -3,10 +3,15 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import { Navigation } from "@/components/layout/Navigation";
-import { QuickCaptureFAB } from "@/components/layout/QuickCaptureFAB";
 import { SplashScreen } from "@/components/ui/SplashScreen";
 import { initialSync } from "@/lib/sync";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+const QuickCaptureFAB = dynamic(
+  () => import("@/components/layout/QuickCaptureFAB").then((mod) => mod.QuickCaptureFAB),
+  { ssr: false }
+);
 
 import QueryProvider from "@/providers/QueryProvider";
 

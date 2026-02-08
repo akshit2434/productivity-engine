@@ -153,6 +153,7 @@ export function Navigation() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               onMouseEnter={() => handlePrefetch(item.href)}
               className={cn(
                 "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-2xl transition-all duration-300 min-w-0 relative",
